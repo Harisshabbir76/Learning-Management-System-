@@ -54,19 +54,11 @@ This platform provides dedicated dashboards for **Admins**, **Teachers**, **Stud
 
 | Layer | Technology |
 |-------|-------------|
-| **Frontend** | React / Next.js |
-| **Backend** | Node.js / Express.js or Django (depending on your implementation) |
-| **Database** | MongoDB / PostgreSQL / MySQL |
+| **Frontend** | Next.js |
+| **Backend** | Node.js / Express.js |
+| **Database** | MongoDB |
 | **Authentication** | JWT / Session-based Auth |
-| **Styling** | Tailwind CSS / Bootstrap |
-| **Storage** | Cloudinary / AWS S3 for file uploads |
+| **Styling** | Tailwind CSS  |
 | **Version Control** | Git & GitHub |
 
 ---
-
-## ⚙️ Installation & Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/<your-username>/<repo-name>.git
-   cd <repo-name>
