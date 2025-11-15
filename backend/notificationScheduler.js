@@ -1,6 +1,7 @@
 // Create a file called notificationScheduler.js
 const cron = require('node-cron');
 const Notification = require('./Models/Notification');
+const { processAndSendNotification } = require('./routes/notifications');
 const mongoose = require('mongoose');
 
 const checkScheduledNotifications = async () => {
@@ -12,10 +13,7 @@ const checkScheduledNotifications = async () => {
     });
 
     for (const notification of notifications) {
-      notification.status = 'sent';
-      notification.sentAt = now;
-      await notification.save();
-      console.log(`Sent scheduled notification: ${notification.title}`);
+      await processAndSendNotification(notification);
     }
   } catch (error) {
     console.error('Error processing scheduled notifications:', error);

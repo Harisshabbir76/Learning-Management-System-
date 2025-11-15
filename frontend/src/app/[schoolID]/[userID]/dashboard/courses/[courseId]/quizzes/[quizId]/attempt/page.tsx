@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -42,6 +42,10 @@ export default function AttemptQuizPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isRefreshingAttemptInfo, setIsRefreshingAttemptInfo] = useState(false);
+  
+  // Add refs to track toast IDs and prevent duplicates
+  const toastIdRef = useRef<string | null>(null);
+  const hasRedirectedRef = useRef(false);
 
   // Navigation functions
   const nextQuestion = () => {
@@ -101,18 +105,76 @@ export default function AttemptQuizPage() {
     }
   };
 
+  const redirectToQuizzes = () => {
+    // Prevent multiple redirects
+    if (hasRedirectedRef.current) return;
+    hasRedirectedRef.current = true;
+
+    // Get schoolId and userId from localStorage or current URL
+    const userData = localStorage.getItem("user");
+    let schoolId = "";
+    let userId = "";
+
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        schoolId = user.schoolId || user.school || "";
+        userId = user.userId || user._id || "";
+        
+        console.log("User data:", { schoolId, userId, user });
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+
+    // Always try to use the full path with schoolId and userId
+    if (schoolId && userId) {
+      const redirectPath = `/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes`;
+      console.log("Redirecting to:", redirectPath);
+      router.push(redirectPath);
+    } else {
+      // If we don't have schoolId/userId, try to get them from the current URL
+      const currentPath = window.location.pathname;
+      const pathParts = currentPath.split('/').filter(Boolean);
+      
+      if (pathParts.length >= 2) {
+        // Assume the URL structure is /schoolId/userId/...
+        const urlSchoolId = pathParts[0];
+        const urlUserId = pathParts[1];
+        const redirectPath = `/${urlSchoolId}/${urlUserId}/dashboard/courses/${courseId}/quizzes`;
+        console.log("Redirecting using URL parts:", redirectPath);
+        router.push(redirectPath);
+      } else {
+        // Fallback to basic path as last resort
+        console.log("Fallback to basic path");
+        router.push(`/dashboard/courses/${courseId}/quizzes`);
+      }
+    }
+  };
+
+  // Clean up toast when component unmounts
+  useEffect(() => {
+    return () => {
+      if (toastIdRef.current) {
+        toast.dismiss(toastIdRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const fetchQuizAndAttemptInfo = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          toast.error("Please log in first");
+          // Use toast.promise to ensure single toast
+          toastIdRef.current = toast.error("Please log in first");
           router.push("/login");
           return;
         }
 
         setLoading(true);
         setApiError(null);
+        hasRedirectedRef.current = false; // Reset redirect flag
 
         // Fetch quiz details
         const quizRes = await fetch(
@@ -122,7 +184,10 @@ export default function AttemptQuizPage() {
         
         if (!quizRes.ok) {
           const errorData = await quizRes.json();
-          toast.error(errorData.message || "Failed to load quiz");
+          // Dismiss any existing toast and show new one
+          if (toastIdRef.current) toast.dismiss(toastIdRef.current);
+          toastIdRef.current = toast.error(errorData.message || "Failed to load quiz");
+          redirectToQuizzes();
           return;
         }
 
@@ -134,20 +199,40 @@ export default function AttemptQuizPage() {
         const attemptInfoData = await fetchAttemptInfo(token);
         if (attemptInfoData) {
           setAttemptInfo(attemptInfoData);
+          
+          // Check if user can attempt the quiz - if not, redirect immediately
+          const canAttempt = attemptInfoData.canRetake && attemptInfoData.attemptsRemaining > 0;
+          if (!canAttempt) {
+            // Only show toast if we haven't already
+            if (!toastIdRef.current) {
+              toastIdRef.current = toast.error(
+                attemptInfoData.retakeMessage || "Cannot attempt this quiz"
+              );
+            }
+            setTimeout(() => {
+              redirectToQuizzes();
+            }, 1500);
+            return;
+          }
         } else {
-          setAttemptInfo({
-            attemptsUsed: quizData.data.maxAttempts,
-            attemptsRemaining: 0,
-            canRetake: false,
-            retakeMessage: "Failed to load attempt information",
-            maxAttempts: quizData.data.maxAttempts
-          });
+          // If we can't get attempt info, redirect to quizzes
+          if (!toastIdRef.current) {
+            toastIdRef.current = toast.error("Failed to load attempt information");
+          }
+          setTimeout(() => {
+            redirectToQuizzes();
+          }, 1500);
         }
 
       } catch (error) {
         console.error("Error fetching quiz:", error);
-        toast.error("Error fetching quiz");
+        if (!toastIdRef.current) {
+          toastIdRef.current = toast.error("Error fetching quiz");
+        }
         setApiError("Failed to load quiz. Please try again.");
+        setTimeout(() => {
+          redirectToQuizzes();
+        }, 1500);
       } finally {
         setLoading(false);
       }
@@ -168,6 +253,19 @@ export default function AttemptQuizPage() {
       if (updatedAttemptInfo) {
         setAttemptInfo(updatedAttemptInfo);
         setApiError(null);
+        
+        // Check if user can still attempt after refresh
+        const canAttempt = updatedAttemptInfo.canRetake && updatedAttemptInfo.attemptsRemaining > 0;
+        if (!canAttempt) {
+          if (!toastIdRef.current) {
+            toastIdRef.current = toast.error(
+              updatedAttemptInfo.retakeMessage || "Cannot attempt this quiz"
+            );
+          }
+          setTimeout(() => {
+            redirectToQuizzes();
+          }, 1500);
+        }
       }
     } catch (error) {
       console.error("Error refreshing attempt info:", error);
@@ -180,7 +278,7 @@ export default function AttemptQuizPage() {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        toast.error("Please log in first");
+        toastIdRef.current = toast.error("Please log in first");
         router.push("/login");
         return;
       }
@@ -191,7 +289,11 @@ export default function AttemptQuizPage() {
       // Validate all questions are answered
       const unansweredQuestions = answers.filter(answer => answer === -1).length;
       if (unansweredQuestions > 0) {
-        toast.error(`Please answer all questions before submitting. ${unansweredQuestions} question(s) unanswered.`);
+        // Dismiss previous toast and show new one
+        if (toastIdRef.current) toast.dismiss(toastIdRef.current);
+        toastIdRef.current = toast.error(
+          `Please answer all questions before submitting. ${unansweredQuestions} question(s) unanswered.`
+        );
         setIsSubmitting(false);
         return;
       }
@@ -217,14 +319,16 @@ export default function AttemptQuizPage() {
       const data = await res.json();
       
       if (res.ok) {
-        toast.success(`Quiz submitted successfully! You scored ${data.score}/${data.total}`);
+        // Clear previous toast and show success
+        if (toastIdRef.current) toast.dismiss(toastIdRef.current);
+        toastIdRef.current = toast.success(`Quiz submitted successfully! You scored ${data.score}/${data.total}`);
         
         // Refresh attempt info to get latest state
         await refreshAttemptInfo();
         
         // Redirect after success
         setTimeout(() => {
-          router.push(`/dashboard/courses/${courseId}/quizzes`);
+          redirectToQuizzes();
         }, 2000);
       } else {
         const errorMessage = data.message || "Failed to submit quiz";
@@ -233,11 +337,23 @@ export default function AttemptQuizPage() {
         // Refresh attempt info to sync with backend
         await refreshAttemptInfo();
         
-        toast.error(errorMessage);
+        // Show error toast only once
+        if (!toastIdRef.current) {
+          toastIdRef.current = toast.error(errorMessage);
+        }
+        
+        // If submission failed due to attempt restrictions, redirect
+        if (errorMessage.includes("attempt") || errorMessage.includes("passed") || errorMessage.includes("maximum")) {
+          setTimeout(() => {
+            redirectToQuizzes();
+          }, 2000);
+        }
       }
     } catch (error) {
       console.error("Error submitting quiz:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      if (!toastIdRef.current) {
+        toastIdRef.current = toast.error("Network error. Please check your connection and try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -260,7 +376,7 @@ export default function AttemptQuizPage() {
         <div className="text-center">
           <p className="text-red-500 text-lg mb-4">Failed to load quiz</p>
           <button
-            onClick={() => router.push(`/dashboard/courses/${courseId}/quizzes`)}
+            onClick={redirectToQuizzes}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Back to Quizzes
@@ -270,71 +386,22 @@ export default function AttemptQuizPage() {
     );
   }
 
-  // Check if user can attempt the quiz
+  // Check if user can attempt the quiz - if not, show loading while redirecting
   const canAttempt = attemptInfo?.canRetake && attemptInfo.attemptsRemaining > 0;
 
-  if (!canAttempt || apiError) {
+  if (!canAttempt) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">{quiz.title}</h1>
-            
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <svg className="w-8 h-8 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h2 className="text-xl font-semibold text-red-800">Cannot Attempt Quiz</h2>
-              </div>
-              
-              <p className="text-gray-700 mb-4">
-                {apiError || attemptInfo?.retakeMessage || "You have used all available attempts for this quiz."}
-              </p>
-              
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <p><strong>Attempts used:</strong> {attemptInfo?.attemptsUsed} / {attemptInfo?.maxAttempts}</p>
-                <p><strong>Attempts remaining:</strong> {attemptInfo?.attemptsRemaining}</p>
-                <p><strong>Current attempt:</strong> {attemptInfo ? attemptInfo.attemptsUsed + 1 : 1}</p>
-              </div>
-              
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-yellow-800 text-sm font-medium mb-2">Possible reasons:</p>
-                <ul className="text-yellow-700 text-sm list-disc list-inside space-y-1">
-                  <li>Time restrictions between attempts</li>
-                  <li>Quiz expiration</li>
-                  <li>Already achieving passing score</li>
-                  <li>Backend validation rules</li>
-                </ul>
-              </div>
-              
-              <div className="mt-6 flex gap-4 flex-wrap">
-                <button
-                  onClick={() => router.push(`/dashboard/courses/${courseId}/quizzes`)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                >
-                  Back to Quizzes
-                </button>
-                <button
-                  onClick={refreshAttemptInfo}
-                  disabled={isRefreshingAttemptInfo}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-400 flex items-center transition-colors"
-                >
-                  {isRefreshingAttemptInfo ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Refreshing...
-                    </>
-                  ) : (
-                    "Refresh Status"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to quizzes...</p>
+          <p className="text-sm text-gray-500 mt-2">You cannot attempt this quiz</p>
+          <button
+            onClick={redirectToQuizzes}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Go to Quizzes Now
+          </button>
         </div>
       </div>
     );
@@ -351,53 +418,25 @@ export default function AttemptQuizPage() {
               <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
                 <span>Total Marks: {quiz.totalMarks}</span>
                 <span>Questions: {quiz.questions.length}</span>
+                {quiz.maxAttempts > 1 && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                    {quiz.maxAttempts} Attempts
+                  </span>
+                )}
               </div>
             </div>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 min-w-[250px]">
-              <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-2">Attempt Information</p>
-                <div className="space-y-1">
-                  <p>Attempt: {attemptInfo.attemptsUsed + 1} of {attemptInfo.maxAttempts}</p>
-                  <p>{attemptInfo.attemptsRemaining} attempt(s) remaining</p>
-                  {attemptInfo.retakeMessage && (
-                    <p className="text-xs mt-1 italic">{attemptInfo.retakeMessage}</p>
-                  )}
+            {/* Attempt Info */}
+            {attemptInfo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 min-w-[200px]">
+                <div className="text-sm text-blue-800">
+                  <div className="font-semibold">Attempt {attemptInfo.attemptsUsed + 1} of {attemptInfo.maxAttempts}</div>
+                  <div className="text-xs mt-1">
+                    {attemptInfo.attemptsRemaining} attempt(s) remaining
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Retake Notice */}
-          {attemptInfo.attemptsUsed > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-yellow-800 font-medium">Retake Attempt</span>
-              </div>
-              <p className="text-yellow-700 text-sm mt-1">
-                This is your attempt #{attemptInfo.attemptsUsed + 1}. Your previous scores will be preserved.
-              </p>
-            </div>
-          )}
-
-          {/* Instructions */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center mb-2">
-              <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-green-800 font-medium">Instructions</span>
-            </div>
-            <ul className="text-green-700 text-sm list-disc list-inside space-y-1">
-              <li>Answer all questions before submitting</li>
-              <li>You cannot change answers after submission</li>
-              <li>Each question has equal marks unless specified</li>
-              <li>Current attempt: #{attemptInfo.attemptsUsed + 1}</li>
-              <li>Use the navigation to move between questions</li>
-            </ul>
+            )}
           </div>
 
           {/* Progress Bar */}
@@ -484,7 +523,7 @@ export default function AttemptQuizPage() {
                 <button
                   onClick={() => {
                     if (confirm('Are you sure you want to cancel? Your progress will be lost.')) {
-                      router.back();
+                      redirectToQuizzes();
                     }
                   }}
                   disabled={isSubmitting}

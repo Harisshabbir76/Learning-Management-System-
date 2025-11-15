@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
-const Course = require('../models/Course');
+const Course = require('../Models/Course');
 const User = require('../Models/User');
 const School = require('../Models/institure');
 const Section = require('../Models/Section');
@@ -637,45 +637,6 @@ router.get('/section/:sectionId', auth, async (req, res) => {
 });
 
 
-// In your courses router
-router.get('/section/:sectionId', auth, async (req, res) => {
-  try {
-    const { sectionId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(sectionId)) {
-      return errorResponse(res, 400, 'Invalid section ID format');
-    }
-
-    // Verify section belongs to user's school
-    const section = await Section.findOne({
-      _id: sectionId,
-      school: req.user.school
-    });
-
-    if (!section) {
-      return errorResponse(res, 404, 'Section not found or access denied');
-    }
-
-    const courses = await Course.find({
-      section: sectionId,
-      school: req.user.school
-    })
-    .populate('teachers', 'name email userId')
-    .populate('students', 'name email userId')
-    .populate('section', 'name sectionCode')
-    .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: courses,
-      count: courses.length
-    });
-
-  } catch (err) {
-    console.error('Get courses by section error:', err);
-    errorResponse(res, 500, 'Server error', err.message);
-  }
-});
 
 
 

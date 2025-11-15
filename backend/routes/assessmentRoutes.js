@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const Assessment = require("../models/Assessment");
-const Grade = require("../models/Grade");
-const Course = require("../models/Course");
+const Assessment = require("../Models/Assessment");
+const Grade = require("../Models/Grade");
+const Course = require("../Models/Course");
 const authMiddleware = require("../middleware/auth");
 
 // ✅ middleware for role check

@@ -285,7 +285,7 @@ export default function QuizListPage() {
     }
   };
 
-  // Open result modal with accurate grading display - FIXED VERSION
+  // Open result modal with accurate grading display
   const openResultModal = async (quizId: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -343,22 +343,35 @@ export default function QuizListPage() {
     setSelectedSubmission(null);
   };
 
-  // Calculate time remaining until quiz expires
-  const getTimeRemaining = (visibleUntil: string) => {
+  // Format deadline date and time
+  const formatDeadline = (visibleUntil: string) => {
     if (!visibleUntil) return "No deadline";
     
+    const date = new Date(visibleUntil);
     const now = new Date();
-    const until = new Date(visibleUntil);
-    const diffMs = until.getTime() - now.getTime();
+    const isExpired = date < now;
     
-    if (diffMs <= 0) return "Expired";
-    
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (diffDays > 0) return `${diffDays}d ${diffHours}h left`;
-    if (diffHours > 0) return `${diffHours}h left`;
-    return "Less than 1h left";
+    return (
+      <div className={`text-center ${isExpired ? 'text-red-600' : 'text-gray-900'}`}>
+        <div className="text-sm font-bold">
+          {date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })}
+        </div>
+        <div className="text-xs">
+          {date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          })}
+        </div>
+        {isExpired && (
+          <div className="text-xs font-medium mt-1">Expired</div>
+        )}
+      </div>
+    );
   };
 
   // Check if quiz is active (not expired and published)
@@ -532,17 +545,20 @@ export default function QuizListPage() {
                           </div>
                           
                           <div key="deadline" className="text-center p-3 bg-orange-50 rounded-lg">
-                            <div className={`text-sm font-bold ${isExpired ? 'text-red-600' : 'text-orange-600'}`}>
-                              {getTimeRemaining(quiz.visibleUntil)}
-                            </div>
-                            <div className="text-xs text-orange-800">Deadline</div>
+                            {formatDeadline(quiz.visibleUntil)}
+                            <div className="text-xs text-orange-800 mt-1">Deadline</div>
                           </div>
                         </div>
 
                         {/* Deadline Info */}
                         {quiz.visibleUntil && (
                           <div className="text-sm text-gray-500 mb-4">
-                            <span className="font-medium">Closes:</span> {formatDate(quiz.visibleUntil)}
+                            <span className="font-medium">Closes:</span> {formatDate(quiz.visibleUntil)} at{" "}
+                            {new Date(quiz.visibleUntil).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
                           </div>
                         )}
                         
@@ -772,7 +788,7 @@ export default function QuizListPage() {
                       </div>
                     </div>
 
-                    {/* Questions and Answers - FIXED DISPLAY */}
+                    {/* Questions and Answers */}
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-4">Question Review</h3>
                       <div className="space-y-4">

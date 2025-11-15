@@ -114,17 +114,13 @@ router.post('/:courseId', auth, async (req, res) => {
 
     await quiz.save();
 
-    // Create notifications for enrolled students
-    const students = await Student.find({ courses: courseId });
-    const notifications = students.map(student => ({
-      recipient: student._id,
-      title: `New Quiz in ${course.name}`,
-      message: `A new quiz "${quiz.title}" has been added to your course.`,
-      url: `/courses/${courseId}/quizzes`,
-    }));
-
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
+    // Create notifications for enrolled students using the model method
+    try {
+      await Notification.createQuizNotification(quiz, course, user._id);
+      console.log(`✅ Quiz notifications created successfully for course: ${course.name}`);
+    } catch (notifError) {
+      console.error('❌ Failed to create quiz notifications:', notifError);
+      // Don't fail the whole request if notifications fail
     }
 
     res.status(201).json({ 
@@ -814,6 +810,63 @@ router.get('/:quizId/export', auth, async (req, res) => {
   } catch (err) {
     console.error('Export submissions error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Debug route to test quiz notifications
+router.get('/debug/quiz-notifications/:courseId', auth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await Course.findById(courseId)
+      .populate('students', 'name email role')
+      .populate({
+        path: 'section',
+        populate: {
+          path: 'students',
+          select: 'name email role'
+        }
+      });
+    
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    // Get all unique students
+    let studentIds = [];
+    
+    // From course students
+    if (course.students && course.students.length > 0) {
+      const courseStudentIds = course.students
+        .filter(student => student.role === 'student')
+        .map(student => student._id);
+      studentIds = studentIds.concat(courseStudentIds);
+    }
+    
+    // From section students
+    if (course.section && course.section.students) {
+      const sectionStudentIds = course.section.students
+        .filter(student => student.role === 'student')
+        .map(student => student._id);
+      studentIds = studentIds.concat(sectionStudentIds);
+    }
+    
+    // Remove duplicates
+    const uniqueStudentIds = [...new Set(studentIds.map(id => id.toString()))];
+    const students = await User.find({ _id: { $in: uniqueStudentIds } }).select('name email role');
+    
+    res.json({
+      success: true,
+      data: {
+        course: course.name,
+        totalStudents: students.length,
+        students: students.map(s => ({ name: s.name, email: s.email, role: s.role })),
+        courseStudents: course.students?.length || 0,
+        sectionStudents: course.section?.students?.length || 0
+      }
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

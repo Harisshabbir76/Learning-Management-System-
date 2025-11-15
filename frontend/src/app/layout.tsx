@@ -1,31 +1,24 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { AuthProvider } from '../context/AuthContext';
+"use client";
 import './globals.css';
-import { Toaster } from 'react-hot-toast';
-import JwtExpiredModal from '../component/JwtExpiredModal';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: 'School Management System',
-  description: 'Modern school management platform',
-};
+import { AuthProvider } from '../context/AuthContext';
+import { NotificationProvider } from '../context/NotificationContext';
+import NotificationPopup from '../component/NotificationPopup';
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <AuthProvider>
-          <Toaster />
-          {children}
+          <NotificationProvider>
+            {children}
+            <NotificationPopup />
+          </NotificationProvider>
         </AuthProvider>
-        <JwtExpiredModal />
       </body>
     </html>
-  );
+  )
 }

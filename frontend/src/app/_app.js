@@ -1,12 +1,10 @@
-// pages/_app.js
-import { AuthProvider } from '../context/AuthContext';
-import '../styles/globals.css';
+import { NotificationProvider } from '../context/NotificationContext';
 
 function MyApp({ Component, pageProps }) {
   return (
-    <AuthProvider>
+    <NotificationProvider>
       <Component {...pageProps} />
-    </AuthProvider>
+    </NotificationProvider>
   );
 }
 

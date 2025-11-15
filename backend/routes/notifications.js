@@ -1,663 +1,557 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
-const roleAuth = require('../middleware/roleAuth');
 const Notification = require('../Models/Notification');
 const User = require('../Models/User');
-const Section = require('../Models/Section');
 const Course = require('../Models/Course');
-const mongoose = require('mongoose');
+const Section = require('../Models/section');
+const authMiddleware = require('../middleware/auth');
+const roleAuth = require('../middleware/roleAuth');
 
-// Helper function to calculate recipients
-const calculateRecipients = async (notificationData, schoolId) => {
-  let recipientCount = 0;
-  
-  switch (notificationData.targetType) {
-    case 'all':
-      recipientCount = await User.countDocuments({ school: schoolId, isActive: true });
-      break;
-    
-    case 'role':
-      if (notificationData.targetRoles && notificationData.targetRoles.length > 0) {
-        recipientCount = await User.countDocuments({
-          school: schoolId,
-          role: { $in: notificationData.targetRoles },
-          isActive: true
-        });
-      }
-      break;
-    
-    case 'specific':
-      if (notificationData.specificUsers && notificationData.specificUsers.length > 0) {
-        recipientCount = notificationData.specificUsers.length;
-      }
-      break;
-    
-    case 'section':
-      if (notificationData.sections && notificationData.sections.length > 0) {
-        const sections = await Section.find({
-          _id: { $in: notificationData.sections },
-          school: schoolId
-        }).populate('students');
-        
-        sections.forEach(section => {
-          recipientCount += section.students.length;
-        });
-      }
-      break;
-    
-    case 'course':
-      if (notificationData.courses && notificationData.courses.length > 0) {
-        const courses = await Course.find({
-          _id: { $in: notificationData.courses },
-          school: schoolId
-        }).populate('students');
-        
-        courses.forEach(course => {
-          recipientCount += course.students.length;
-        });
-      }
-      break;
-  }
-  
-  return recipientCount;
-};
+let io;
 
-// Helper function to send push notifications
-const sendPushNotifications = async (notification, recipients) => {
-  try {
-    console.log(`📱 Sending push notification to ${recipients.length} recipients`);
-    console.log('Notification:', {
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
-      priority: notification.priority
-    });
-    
-    // Simulate push notification sending
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      success: true,
-      sentCount: recipients.length,
-      failedCount: 0
-    };
-    
-  } catch (error) {
-    console.error('❌ Error sending push notifications:', error);
-    return {
+function setIO(socketioInstance) {
+  io = socketioInstance;
+}
+
+// Middleware to ensure io is initialized
+const checkIO = (req, res, next) => {
+  if (!io) {
+    return res.status(503).json({ 
       success: false,
-      sentCount: 0,
-      failedCount: recipients.length,
-      error: error.message
+      message: 'Socket.IO not initialized' 
+    });
+  }
+  next();
+};
+
+// Enhanced function to process and send notifications
+const processAndSendNotification = async (notification) => {
+  if (!io) {
+    console.error('❌ Socket.IO not initialized');
+    return 0;
+  }
+
+  try {
+    let deliveredCount = 0;
+
+    // Emit to all recipients
+    notification.recipients.forEach(recipientId => {
+      const recipientStr = recipientId.toString();
+      const userRoom = io.sockets.adapter.rooms.get(recipientStr);
+      const isConnected = userRoom && userRoom.size > 0;
+
+      if (isConnected) {
+        io.to(recipientStr).emit('newNotification', {
+          _id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          createdAt: notification.createdAt,
+          sender: notification.sender,
+          category: notification.category,
+          priority: notification.priority,
+          recipientType: notification.recipientType
+        });
+        deliveredCount++;
+        console.log(`📤 Notification sent to user ${recipientStr}`);
+      }
+    });
+
+    notification.status = 'sent';
+    notification.metadata = {
+      ...notification.metadata,
+      socketDelivery: {
+        delivered: deliveredCount,
+        total: notification.recipients.length,
+        deliveredAt: new Date(),
+        onlineRecipients: deliveredCount
+      }
     };
+    
+    await notification.save();
+    
+    console.log(`✅ Notification ${notification._id} processed. Delivered to ${deliveredCount}/${notification.recipients.length} users via Socket.IO`);
+    
+    return deliveredCount;
+  } catch (error) {
+    console.error('❌ Error processing notification:', error);
+    notification.status = 'failed';
+    notification.metadata = {
+      ...notification.metadata,
+      error: error.message,
+      failedAt: new Date()
+    };
+    await notification.save();
+    return 0;
   }
 };
 
-// Create notification - Admin and Faculty with notification permission
-router.post('/', 
-  auth, 
-  roleAuth(['admin', 'faculty'], ['send_notifications']),
-  async (req, res) => {
-    try {
-      const {
-        title,
-        message,
-        type,
-        priority,
-        targetType,
-        targetRoles,
-        specificUsers,
-        sections,
-        courses,
-        deliveryMethods = {},
-        scheduledFor,
-        expiresAt
-      } = req.body;
+// Health check for notifications route
+router.get('/health', (req, res) => {
+  res.json({ 
+    success: true,
+    message: 'Notifications API is working',
+    socketStatus: io ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
 
-      // Validation
-      if (!title || !message || !targetType) {
-        return res.status(400).json({
-          success: false,
-          message: 'Title, message, and target type are required'
-        });
-      }
+// Send notification
+router.post('/send', authMiddleware, roleAuth(['admin']), checkIO, async (req, res) => {
+  const { 
+    title, 
+    message, 
+    recipientType, 
+    recipientIds = [], 
+    scheduledFor, 
+    priority = 'medium',
+    category = 'general',
+    metadata = {}
+  } = req.body;
+  
+  const senderId = req.user.id;
 
-      if (targetType === 'role' && (!targetRoles || targetRoles.length === 0)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Target roles are required for role-based notifications'
-        });
-      }
-
-      if (targetType === 'specific' && (!specificUsers || specificUsers.length === 0)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Specific users are required for user-specific notifications'
-        });
-      }
-
-      if (targetType === 'section' && (!sections || sections.length === 0)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Sections are required for section-based notifications'
-        });
-      }
-
-      if (targetType === 'course' && (!courses || courses.length === 0)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Courses are required for course-based notifications'
-        });
-      }
-
-      // Calculate total recipients
-      const totalRecipients = await calculateRecipients({
-        targetType,
-        targetRoles,
-        specificUsers,
-        sections,
-        courses
-      }, req.user.school);
-
-      // Determine status based on scheduling
-      const isScheduled = scheduledFor && new Date(scheduledFor) > new Date();
-      const status = isScheduled ? 'scheduled' : 'sent';
-
-      const notification = new Notification({
-        title,
-        message,
-        type: type || 'info',
-        priority: priority || 'medium',
-        sender: req.user._id,
-        school: req.user.school,
-        targetType,
-        targetRoles,
-        specificUsers,
-        sections,
-        courses,
-        deliveryMethods: {
-          inApp: deliveryMethods.inApp !== false, // Default to true
-          push: deliveryMethods.push || false,
-          email: deliveryMethods.email || false
-        },
-        scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        totalRecipients,
-        status,
-        sentAt: isScheduled ? null : new Date(),
-        pushSent: false
-      });
-
-      await notification.save();
-
-      // Send push notifications immediately if not scheduled and push is enabled
-      if (!isScheduled && deliveryMethods.push) {
-        // Get recipient user IDs for push notifications
-        let recipientUserIds = [];
-        
-        switch (targetType) {
-          case 'all':
-            const allUsers = await User.find({ school: req.user.school, isActive: true }).select('_id');
-            recipientUserIds = allUsers.map(user => user._id);
-            break;
-          case 'role':
-            recipientUserIds = await User.find({
-              school: req.user.school,
-              role: { $in: targetRoles },
-              isActive: true
-            }).select('_id').then(users => users.map(user => user._id));
-            break;
-          case 'specific':
-            recipientUserIds = specificUsers;
-            break;
-          case 'section':
-            // This would need more complex logic to get users from sections
-            break;
-          case 'course':
-            // This would need more complex logic to get users from courses
-            break;
-        }
-        
-        if (recipientUserIds.length > 0) {
-          const pushResult = await sendPushNotifications(notification, recipientUserIds);
-          
-          if (pushResult.success) {
-            notification.pushSent = true;
-            notification.pushSentAt = new Date();
-            await notification.save();
-          }
-        }
-      }
-
-      const populatedNotification = await Notification.findById(notification._id)
-        .populate('sender', 'name email userId')
-        .populate('specificUsers', 'name email userId role')
-        .populate('sections', 'name sectionCode')
-        .populate('courses', 'name code');
-
-      res.status(201).json({
-        success: true,
-        message: 'Notification created successfully',
-        data: populatedNotification
-      });
-
-    } catch (err) {
-      console.error('❌ Create notification error:', err);
-      res.status(500).json({
-        success: false,
-        message: 'Error creating notification',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
-    }
-  }
-);
-
-// Get all notifications (for management)
-router.get('/', 
-  auth, 
-  roleAuth(['admin', 'faculty'], ['view_notifications']),
-  async (req, res) => {
-    try {
-      const { page = 1, limit = 20, status, targetType } = req.query;
-      const skip = (page - 1) * limit;
-
-      const filter = {
-        school: req.user.school
-      };
-      
-      if (status) filter.status = status;
-      if (targetType) filter.targetType = targetType;
-
-      const notifications = await Notification.find(filter)
-        .populate('sender', 'name email userId')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-
-      const total = await Notification.countDocuments(filter);
-
-      res.json({
-        success: true,
-        data: notifications,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      });
-
-    } catch (err) {
-      console.error('❌ Get notifications error:', err);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching notifications',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
-    }
-  }
-);
-
-// Get user's notifications
-router.get('/my-notifications', auth, async (req, res) => {
   try {
-    const { page = 1, limit = 20, unreadOnly } = req.query;
-    
-    console.log(`🔍 Fetching notifications for user: ${req.user._id}, role: ${req.user.role}`);
-
-    let notifications;
-    const options = { page, limit, unreadOnly: unreadOnly === 'true' };
-
-    if (req.user.role === 'student') {
-      notifications = await Notification.getUserNotifications(
-        req.user._id, 
-        req.user.school, 
-        options
-      );
-    } else {
-      notifications = await Notification.getStaffNotifications(
-        req.user._id, 
-        req.user.school, 
-        options
-      );
+    // Validate required fields
+    if (!title || !message || !recipientType) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Title, message, and recipient type are required' 
+      });
     }
 
-    const total = await Notification.countDocuments({
-      school: req.user.school,
-      status: 'sent',
-      isActive: true
+    let recipients = [];
+    let recipientDetails = {};
+
+    switch (recipientType) {
+      case 'all_teachers':
+        const teachers = await User.find({ role: 'teacher' }).select('_id');
+        recipients = teachers.map(t => t._id);
+        break;
+      case 'all_students':
+        const students = await User.find({ role: 'student' }).select('_id');
+        recipients = students.map(s => s._id);
+        break;
+      case 'course_students':
+        if (!recipientIds.length) {
+          return res.status(400).json({ 
+            success: false,
+            message: 'Course ID is required' 
+          });
+        }
+        const course = await Course.findById(recipientIds[0]).populate('students', '_id');
+        if (!course) {
+          return res.status(404).json({ 
+            success: false,
+            message: 'Course not found' 
+          });
+        }
+        recipients = course.students.map(s => s._id);
+        recipientDetails.courseId = recipientIds[0];
+        recipientDetails.courseName = course.name;
+        break;
+      case 'class_students':
+        if (!recipientIds.length) {
+          return res.status(400).json({ 
+            success: false,
+            message: 'Class ID is required' 
+          });
+        }
+        const section = await Section.findById(recipientIds[0]).populate('students', '_id');
+        if (!section) {
+          return res.status(404).json({ 
+            success: false,
+            message: 'Class not found' 
+          });
+        }
+        recipients = section.students.map(s => s._id);
+        recipientDetails.sectionId = recipientIds[0];
+        recipientDetails.sectionName = section.name;
+        break;
+      case 'specific_user':
+        if (!recipientIds.length) {
+          return res.status(400).json({ 
+            success: false,
+            message: 'User ID is required' 
+          });
+        }
+        // Validate users exist
+        const users = await User.find({ _id: { $in: recipientIds } }).select('_id name role');
+        if (users.length !== recipientIds.length) {
+          return res.status(404).json({ 
+            success: false,
+            message: 'One or more users not found' 
+          });
+        }
+        recipients = recipientIds;
+        recipientDetails.userIds = recipientIds;
+        recipientDetails.userNames = users.map(u => ({ id: u._id, name: u.name, role: u.role }));
+        break;
+      case 'all_employees':
+        const employees = await User.find({ 
+          role: { $in: ['admin', 'teacher', 'staff'] } 
+        }).select('_id');
+        recipients = employees.map(e => e._id);
+        break;
+      default:
+        return res.status(400).json({ 
+          success: false,
+          message: 'Invalid recipient type' 
+        });
+    }
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'No recipients found for the specified criteria' 
+      });
+    }
+
+    const notificationData = {
+      title: title.trim(),
+      message: message.trim(),
+      sender: senderId,
+      recipients,
+      recipientType,
+      recipientDetails,
+      priority,
+      category,
+      metadata: {
+        ...metadata,
+        senderInfo: {
+          id: req.user.id,
+          name: req.user.name,
+          role: req.user.role
+        },
+        recipientCount: recipients.length
+      },
+      status: scheduledFor ? 'scheduled' : 'sent',
+      scheduledFor: scheduledFor || null,
+    };
+
+    const notification = new Notification(notificationData);
+    await notification.save();
+
+    // Populate sender info for response
+    await notification.populate('sender', 'name email avatar');
+
+    let deliveryResult = null;
+    if (notification.status === 'sent') {
+      deliveryResult = await processAndSendNotification(notification);
+    }
+
+    res.status(201).json({ 
+      success: true,
+      message: `Notification ${notification.status} successfully`, 
+      notification,
+      delivery: deliveryResult ? {
+        delivered: deliveryResult,
+        total: recipients.length,
+        offline: recipients.length - deliveryResult
+      } : null
+    });
+  } catch (error) {
+    console.error('❌ Error sending notification:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to send notification',
+      error: error.message 
+    });
+  }
+});
+
+// Get user's notifications with pagination and filtering
+router.get('/my-notifications', authMiddleware, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      unreadOnly = false,
+      category,
+      priority,
+      startDate,
+      endDate,
+      search 
+    } = req.query;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user.id;
+
+    let query = { recipients: userId };
+
+    if (unreadOnly === 'true') {
+      query['readBy.user'] = { $ne: userId };
+    }
+
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    if (priority && priority !== 'all') {
+      query.priority = priority;
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { message: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const totalNotifications = await Notification.countDocuments(query);
+
+    const notifications = await Notification.find(query)
+      .populate('sender', 'name email avatar')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Add isRead status for each notification
+    const notificationsWithReadStatus = notifications.map(notification => {
+      const isRead = notification.readBy && notification.readBy.some(read => 
+        read.user && read.user.toString() === userId.toString()
+      );
+      return {
+        ...notification,
+        isRead: !!isRead,
+        read: !!isRead // For backward compatibility
+      };
     });
 
-    const totalUnread = await Notification.countDocuments({
-      school: req.user.school,
-      status: 'sent',
-      isActive: true,
-      readBy: { $not: { $elemMatch: { user: req.user._id } } }
+    const unreadCount = await Notification.countDocuments({
+      recipients: userId,
+      $or: [
+        { readBy: { $eq: [] } },
+        { 'readBy.user': { $ne: userId } }
+      ]
     });
 
     res.json({
       success: true,
-      data: notifications,
-      unreadCount: totalUnread,
+      data: notificationsWithReadStatus,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalNotifications / parseInt(limit)),
+        totalNotifications,
+        hasNext: parseInt(page) * parseInt(limit) < totalNotifications,
+        hasPrev: parseInt(page) > 1
+      },
+      unreadCount
     });
-
-  } catch (err) {
-    console.error('❌ Get user notifications error:', err);
+  } catch (error) {
+    console.error('❌ Error fetching user notifications:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching notifications',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: 'Failed to fetch notifications',
+      error: error.message
     });
   }
 });
 
 // Mark notification as read
-router.post('/:id/read', auth, async (req, res) => {
+router.patch('/:id/read', authMiddleware, async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);
     
     if (!notification) {
-      return res.status(404).json({
+      return res.status(404).json({ 
         success: false,
-        message: 'Notification not found'
+        message: 'Notification not found' 
       });
     }
 
-    await notification.markAsRead(req.user._id);
+    // Check if user is a recipient
+    if (!notification.recipients.includes(req.user.id)) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied' 
+      });
+    }
+
+    await notification.markAsRead(req.user.id);
 
     res.json({
       success: true,
-      message: 'Notification marked as read'
+      message: 'Notification marked as read',
+      notification: await Notification.findById(req.params.id).populate('sender', 'name email avatar')
     });
-
-  } catch (err) {
-    console.error('❌ Mark as read error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error marking notification as read',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
-
-// Mark all notifications as read
-router.post('/mark-all-read', auth, async (req, res) => {
-  try {
-    const userNotifications = await Notification.getUserNotifications(
-      req.user._id,
-      req.user.school,
-      { limit: 1000, unreadOnly: true }
-    );
-
-    await Promise.all(
-      userNotifications.map(notification => 
-        notification.markAsRead(req.user._id)
-      )
-    );
-
-    res.json({
-      success: true,
-      message: 'All notifications marked as read'
-    });
-
-  } catch (err) {
-    console.error('❌ Mark all as read error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error marking notifications as read',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
-
-// Get notification statistics
-router.get('/stats', 
-  auth, 
-  roleAuth(['admin', 'faculty'], ['view_notifications']),
-  async (req, res) => {
-    try {
-      const stats = await Notification.aggregate([
-        {
-          $match: {
-            school: mongoose.Types.ObjectId(req.user.school),
-            status: 'sent'
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalNotifications: { $sum: 1 },
-            totalRecipients: { $sum: '$totalRecipients' },
-            totalRead: { $sum: '$readCount' },
-            pushNotifications: {
-              $sum: {
-                $cond: [{ $eq: ['$deliveryMethods.push', true] }, 1, 0]
-              }
-            },
-            byType: {
-              $push: {
-                type: '$type',
-                count: 1
-              }
-            },
-            byPriority: {
-              $push: {
-                priority: '$priority',
-                count: 1
-              }
-            }
-          }
-        }
-      ]);
-
-      res.json({
-        success: true,
-        data: stats[0] || {
-          totalNotifications: 0,
-          totalRecipients: 0,
-          totalRead: 0,
-          pushNotifications: 0,
-          byType: [],
-          byPriority: []
-        }
-      });
-
-    } catch (err) {
-      console.error('❌ Get stats error:', err);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching notification statistics',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
-    }
-  }
-);
-
-// Delete notification
-router.delete('/:id', 
-  auth, 
-  roleAuth(['admin', 'faculty'], ['manage_notifications']),
-  async (req, res) => {
-    try {
-      const notification = await Notification.findById(req.params.id);
-      
-      if (!notification || notification.school.toString() !== req.user.school.toString()) {
-        return res.status(404).json({
-          success: false,
-          message: 'Notification not found'
-        });
-      }
-
-      await Notification.findByIdAndDelete(req.params.id);
-
-      res.json({
-        success: true,
-        message: 'Notification deleted successfully'
-      });
-
-    } catch (err) {
-      console.error('❌ Delete notification error:', err);
-      res.status(500).json({
-        success: false,
-        message: 'Error deleting notification',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
-    }
-  }
-);
-
-// Debug endpoint to check notifications for a specific user
-router.get('/debug/user/:userId', auth, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const schoolId = req.user.school;
-
-    console.log(`🔍 Debug: Checking notifications for user ${userId} in school ${schoolId}`);
-
-    // Get user details
-    const user = await User.findById(userId)
-      .populate('courses', 'name code _id')
-      .populate('sections', 'name sectionCode _id');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Get all notifications for the school
-    const allNotifications = await Notification.find({
-      school: schoolId,
-      status: 'sent',
-      isActive: true
-    })
-    .populate('courses', 'name code')
-    .populate('sections', 'name sectionCode')
-    .sort({ createdAt: -1 });
-
-    // Get user's notifications using the method
-    const userNotifications = await Notification.getUserNotifications(userId, schoolId);
-
-    // Check which notifications should be visible to user
-    const visibleNotifications = allNotifications.filter(notification => {
-      switch (notification.targetType) {
-        case 'all':
-          return true;
-        
-        case 'role':
-          return notification.targetRoles?.includes(user.role);
-        
-        case 'specific':
-          return notification.specificUsers?.some(id => id.toString() === userId);
-        
-        case 'section':
-          const userSectionIds = user.sections?.map(s => s._id.toString()) || [];
-          const notificationSectionIds = notification.sections?.map(s => s._id.toString()) || [];
-          return notificationSectionIds.some(id => userSectionIds.includes(id));
-        
-        case 'course':
-          const userCourseIds = user.courses?.map(c => c._id.toString()) || [];
-          const notificationCourseIds = notification.courses?.map(c => c._id.toString()) || [];
-          return notificationCourseIds.some(id => userCourseIds.includes(id));
-        
-        default:
-          return false;
-      }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          role: user.role,
-          courses: user.courses,
-          sections: user.sections
-        },
-        allNotifications: allNotifications.length,
-        userNotifications: userNotifications.length,
-        visibleNotifications: visibleNotifications.length,
-        debug: {
-          allNotifications: allNotifications.map(n => ({
-            id: n._id,
-            title: n.title,
-            targetType: n.targetType,
-            courses: n.courses?.map(c => ({ id: c._id, name: c.name })),
-            sections: n.sections?.map(s => ({ id: s._id, name: s.name })),
-            targetRoles: n.targetRoles
-          })),
-          userNotifications: userNotifications.map(n => ({
-            id: n._id,
-            title: n.title,
-            targetType: n.targetType
-          })),
-          visibleNotifications: visibleNotifications.map(n => ({
-            id: n._id,
-            title: n.title,
-            targetType: n.targetType
-          }))
-        }
-      }
-    });
-
   } catch (error) {
-    console.error('Debug error:', error);
-    res.status(500).json({
+    console.error('❌ Error marking notification as read:', error);
+    res.status(500).json({ 
       success: false,
-      message: 'Debug error',
+      message: 'Failed to mark notification as read',
       error: error.message
     });
   }
 });
 
-
-// routes/notifications.js - Add this route
-router.get('/assignments/recent', auth, async (req, res) => {
+// Mark all notifications as read
+router.post('/mark-all-read', authMiddleware, async (req, res) => {
   try {
-    const notifications = await Notification.find({
-      school: req.user.school,
-      type: 'assignment',
-      status: 'sent',
-      $or: [
-        { targetType: 'all' },
-        { targetType: 'role', targetRoles: req.user.role },
-        { targetType: 'course', courses: { $in: req.user.courses } },
-        { targetType: 'section', sections: { $in: req.user.sections } }
-      ]
-    })
-    .populate('courses', 'name code')
-    .populate('sender', 'name')
-    .sort({ createdAt: -1 })
-    .limit(10);
-
-    // Mark which notifications are read by current user
-    const notificationsWithReadStatus = notifications.map(notification => ({
-      ...notification.toObject(),
-      isReadByCurrentUser: notification.readBy.some(
-        entry => entry.user.toString() === req.user._id.toString()
-      )
-    }));
+    const userId = req.user.id;
+    
+    const result = await Notification.updateMany(
+      { 
+        recipients: userId,
+        $or: [
+          { readBy: { $eq: [] } },
+          { 'readBy.user': { $ne: userId } }
+        ]
+      },
+      { 
+        $push: { 
+          readBy: { user: userId, readAt: new Date() } 
+        } 
+      }
+    );
 
     res.json({
       success: true,
-      data: notificationsWithReadStatus
+      message: 'All notifications marked as read',
+      modifiedCount: result.modifiedCount
     });
-  } catch (err) {
-    console.error('Error fetching assignment notifications:', err);
+  } catch (error) {
+    console.error('❌ Error marking all notifications as read:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching assignment notifications'
+      message: 'Failed to mark all notifications as read',
+      error: error.message
     });
   }
 });
 
-module.exports = router;
+// Get notification statistics
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const totalNotifications = await Notification.countDocuments({ recipients: userId });
+    const unreadCount = await Notification.countDocuments({ 
+      recipients: userId,
+      $or: [
+        { readBy: { $eq: [] } },
+        { 'readBy.user': { $ne: userId } }
+      ]
+    });
+    
+    const categoryStats = await Notification.aggregate([
+      { $match: { recipients: userId } },
+      { $group: { _id: '$category', count: { $sum: 1 } } }
+    ]);
+
+    const priorityStats = await Notification.aggregate([
+      { $match: { recipients: userId } },
+      { $group: { _id: '$priority', count: { $sum: 1 } } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total: totalNotifications,
+        unread: unreadCount,
+        read: totalNotifications - unreadCount,
+        byCategory: categoryStats,
+        byPriority: priorityStats
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching notification stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notification statistics',
+      error: error.message
+    });
+  }
+});
+
+// Get notification by ID
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const notification = await Notification.findById(req.params.id)
+      .populate('sender', 'name email avatar')
+      .populate('recipients', 'name email role');
+
+    if (!notification) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Notification not found' 
+      });
+    }
+
+    // Check if user is a recipient or admin
+    if (!notification.recipients.includes(req.user.id) && req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied' 
+      });
+    }
+
+    // Mark as read if viewing for the first time
+    const isRead = notification.readBy && notification.readBy.some(read => 
+      read.user && read.user.toString() === req.user.id.toString()
+    );
+    
+    if (!isRead) {
+      await notification.markAsRead(req.user.id);
+    }
+
+    res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    console.error('❌ Error fetching notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notification',
+      error: error.message
+    });
+  }
+});
+
+// Test notification endpoint (for development)
+router.post('/test/send', authMiddleware, roleAuth(['admin']), checkIO, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const senderId = req.user.id;
+
+    const testNotification = new Notification({
+      title: 'Test Notification',
+      message: 'This is a test notification to verify the notification system is working properly.',
+      sender: senderId,
+      recipients: [userId || senderId], // Send to specified user or self
+      recipientType: 'specific_user',
+      priority: 'medium',
+      category: 'general',
+      status: 'sent'
+    });
+
+    await testNotification.save();
+    await testNotification.populate('sender', 'name email');
+
+    const deliveredCount = await processAndSendNotification(testNotification);
+
+    res.json({
+      success: true,
+      message: 'Test notification sent successfully',
+      notification: testNotification,
+      delivered: deliveredCount,
+      socketStatus: io ? io.engine.clientsCount : 0
+    });
+  } catch (error) {
+    console.error('❌ Error sending test notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send test notification',
+      error: error.message
+    });
+  }
+});
+
+module.exports = { router, setIO, processAndSendNotification };
