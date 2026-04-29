@@ -43,7 +43,7 @@ export default function AssignmentsListPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string>("");
-  const [userId, setuserId] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>({});
   const [submissionGrades, setSubmissionGrades] = useState<SubmissionWithGrade>({});
   
@@ -180,7 +180,7 @@ export default function AssignmentsListPage() {
         if (res.ok) {
           const data = await res.json();
           setRole(data.user?.role || "");
-          setuserId(data.user?.id || "");
+          setCurrentUserId(data.user?.id || "");
         }
       } catch (err) {
         console.error("Error fetching user info:", err);
