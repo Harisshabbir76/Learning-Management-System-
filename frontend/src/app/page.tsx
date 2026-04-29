@@ -41,7 +41,7 @@ export default function Home() {
             >
               Login Page
             </button>{" "}
-            - Use credentials: demo@school.com / demo123
+            - Use credentials: Haris.1328@gmail.com / Test1234
           </span>
           <i className="fas fa-sparkles animate-pulse"></i>
         </div>
@@ -78,11 +78,10 @@ export default function Home() {
 
         <div className="relative z-10 container mx-auto px-4 py-16">
           <div
-            className={`text-center transition-all duration-1000 ${
-              isVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
+            className={`text-center transition-all duration-1000 ${isVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+              }`}
           >
             <div className="mb-4">
               <span className="inline-block px-4 py-2 bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-800 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4 shadow-md">
@@ -129,17 +128,17 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon="fas fa-building-columns"
               title="ERP Integration"
               desc="Complete management system with student info, finance, and HR tools."
             />
-            <FeatureCard 
+            <FeatureCard
               icon="fas fa-mobile-screen-button"
               title="Multi-Platform"
               desc="Access from anywhere via web, tablets, or mobile applications."
             />
-            <FeatureCard 
+            <FeatureCard
               icon="fas fa-brain"
               title="AI Insights"
               desc="Advanced analytics for personalized learning and performance analysis."
