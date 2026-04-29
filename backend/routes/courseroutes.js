@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const Course = require('../Models/Course');
 const User = require('../Models/User');
-const School = require('../Models/institure');
+const School = require('../Models/School');
 const Section = require('../Models/Section');
 const mongoose = require('mongoose');
 

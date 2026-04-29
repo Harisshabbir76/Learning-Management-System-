@@ -172,13 +172,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password })
       });
 
-      if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        return { success: false, message: errorData.message || `Login failed: ${res.status}` };
+      }
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userData', JSON.stringify(data.user));
         setUser(data.user);
-        await fetchUnreadCount(); // Update unread count after login
+        fetchUnreadCount(); // Update unread count after login (non-blocking)
         return { success: true, user: data.user, token: data.token };
       }
       return { success: false, message: data.message || 'Login failed' };
@@ -193,13 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(userData)
       });
 
-      if (!res.ok) throw new Error(`Signup failed: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        return { success: false, message: errorData.message || `Signup failed: ${res.status}` };
+      }
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userData', JSON.stringify(data.user));
         setUser(data.user);
-        await fetchUnreadCount(); // Update unread count after signup
+        fetchUnreadCount(); // Update unread count after signup (non-blocking)
         return { success: true, user: data.user };
       }
       return { success: false, message: data.message || 'Signup failed' };
@@ -224,8 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     unreadCount,
     fetchUnreadCount,
-    themeColor: user?.school?.themeColor,
-    schoolId: user?.school?._id,
+    themeColor: typeof user?.school === 'object' ? user?.school?.themeColor : undefined,
+    schoolId: typeof user?.school === 'object' ? user?.school?._id : user?.school,
     permissions: user?.permissions,
   };
 

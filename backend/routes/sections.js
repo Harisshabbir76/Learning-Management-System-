@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Section = require('../Models/Section');
 const User = require('../Models/User');
-const School = require('../Models/institure');
+const School = require('../Models/School');
 const mongoose = require('mongoose');
 
 // Helper function to check section management permissions

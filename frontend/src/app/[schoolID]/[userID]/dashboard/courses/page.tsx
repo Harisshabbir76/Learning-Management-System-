@@ -131,14 +131,14 @@ export default function CoursesPage() {
         }
 
         // Filter courses by user's school
-        const userSchoolId = typeof profileData.user.school === 'string' 
+        const userschoolId = typeof profileData.user.school === 'string' 
           ? profileData.user.school 
           : profileData.user.school?._id;
         
         const filteredCourses = (Array.isArray(coursesData.data) ? coursesData.data : [])
           .filter(course => {
-            const courseSchoolId = typeof course.school === 'string' ? course.school : course.school?._id;
-            return courseSchoolId === userSchoolId;
+            const courseschoolId = typeof course.school === 'string' ? course.school : course.school?._id;
+            return courseschoolId === userschoolId;
           });
 
         setCourses(filteredCourses);

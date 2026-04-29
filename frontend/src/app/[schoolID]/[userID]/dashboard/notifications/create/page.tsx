@@ -100,7 +100,7 @@ const CreateNotificationPage = ({ params }) => {
 
       if (response.data.success) {
         toast.success('Notification sent successfully!');
-        router.push(`/${params.schoolID}/${params.userID}/dashboard/notifications`);
+        router.push(`/${params.schoolId}/${params.userId}/dashboard/notifications`);
       }
     } catch (error) {
       console.error('Error sending notification:', error);

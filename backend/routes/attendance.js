@@ -6,77 +6,7 @@ const Attendance = require('../Models/Attendance');
 const Section = require('../Models/Section');
 const User = require('../Models/User');
 
-// Mark attendance for a section
-router.post('/mark', auth, roleAuth(['teacher', 'admin']), async (req, res) => {
-  try {
-    const { sectionId, date, attendanceData } = req.body;
-    
-    // Validate section exists and teacher has access
-    const section = await Section.findById(sectionId);
-    if (!section) {
-      return res.status(404).json({
-        success: false,
-        message: 'Section not found'
-      });
-    }
-    
-    // Check if teacher owns this section (unless admin)
-    if (req.user.role !== 'admin' && section.teacher.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to mark attendance for this section'
-      });
-    }
-    
-    // Process attendance records
-    const attendanceRecords = [];
-    for (const record of attendanceData) {
-      // Check if student is in the section
-      if (!section.students.includes(record.studentId)) {
-        continue; // Skip students not in this section
-      }
-      
-      // Check if attendance already exists for this date
-      const existingAttendance = await Attendance.findOne({
-        student: record.studentId,
-        date: new Date(date)
-      });
-      
-      if (existingAttendance) {
-        // Update existing record
-        existingAttendance.status = record.status;
-        existingAttendance.notes = record.notes || '';
-        await existingAttendance.save();
-        attendanceRecords.push(existingAttendance);
-      } else {
-        // Create new record
-        const newAttendance = new Attendance({
-          student: record.studentId,
-          section: sectionId,
-          date: new Date(date),
-          status: record.status,
-          recordedBy: req.user._id,
-          notes: record.notes || ''
-        });
-        await newAttendance.save();
-        attendanceRecords.push(newAttendance);
-      }
-    }
-    
-    res.json({
-      success: true,
-      message: 'Attendance marked successfully',
-      data: attendanceRecords
-    });
-  } catch (error) {
-    console.error('Error marking attendance:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error marking attendance',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
+
 
 // Get attendance for a student
 router.get('/student/:studentId', auth, async (req, res) => {

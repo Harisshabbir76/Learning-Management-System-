@@ -7,7 +7,7 @@ import AddStudentModal from '../../../../../../component/AddStudentModal';
 export default function SectionDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { schoolID, userID, sectionId } = params;
+  const { schoolId, userId, sectionId } = params;
   const [section, setSection] = useState(null);
   const [courses, setCourses] = useState([]);
   const [timetable, setTimetable] = useState(null);
@@ -483,7 +483,7 @@ export default function SectionDetailPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
           <p className="text-gray-600 mb-4">You don't have permission to view this section.</p>
           <Link
-            href={`/${schoolID}/${userID}/dashboard`}
+            href={`/${schoolId}/${userId}/dashboard`}
             className="text-blue-600 hover:text-blue-800 font-medium"
           >
             Return to Dashboard
@@ -505,7 +505,7 @@ export default function SectionDetailPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Section</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Link
-            href={`/${schoolID}/${userID}/dashboard/section`}
+            href={`/${schoolId}/${userId}/dashboard/section`}
             className="text-blue-600 hover:text-blue-800 font-medium"
           >
             Back to Sections
@@ -616,7 +616,7 @@ export default function SectionDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link
-                href={`/${schoolID}/${userID}/dashboard/section`}
+                href={`/${schoolId}/${userId}/dashboard/section`}
                 className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors font-medium"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1089,7 +1089,7 @@ export default function SectionDetailPage() {
                   </p>
                 </div>
                 <Link
-                  href={`/${schoolID}/${userID}/dashboard/courses/create`}
+                  href={`/${schoolId}/${userId}/dashboard/courses/create`}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Create New Course
@@ -1108,7 +1108,7 @@ export default function SectionDetailPage() {
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">No Courses Linked</h4>
                   <p className="text-gray-600 mb-6">This section doesn't have any courses yet</p>
                   <Link
-                    href={`/${schoolID}/${userID}/dashboard/courses/create`}
+                    href={`/${schoolId}/${userId}/dashboard/courses/create`}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
                     Create First Course
@@ -1153,7 +1153,7 @@ export default function SectionDetailPage() {
                         
                         <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                           <Link
-                            href={`/${schoolID}/${userID}/dashboard/courses/${course._id}`}
+                            href={`/${schoolId}/${userId}/dashboard/courses/${course._id}`}
                             className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                           >
                             View Details →
@@ -1184,21 +1184,21 @@ export default function SectionDetailPage() {
                   <div className="flex space-x-3">
                     {timetable ? (
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/timetable/edit/${encodeURIComponent(section.name)}`}
+                        href={`/${schoolId}/${userId}/dashboard/timetable/edit/${encodeURIComponent(section.name)}`}
                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
                         Edit Timetable
                       </Link>
                     ) : (
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/timetable/create`}
+                        href={`/${schoolId}/${userId}/dashboard/timetable/create`}
                         className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                       >
                         Create Timetable
                       </Link>
                     )}
                     <Link
-                      href={`/${schoolID}/${userID}/dashboard/timetable`}
+                      href={`/${schoolId}/${userId}/dashboard/timetable`}
                       className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                     >
                       View All Timetables
@@ -1254,13 +1254,13 @@ export default function SectionDetailPage() {
                   {hasTimetableAccess(currentUser) ? (
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/timetable/create`}
+                        href={`/${schoolId}/${userId}/dashboard/timetable/create`}
                         className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                       >
                         Create Timetable
                       </Link>
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/timetable`}
+                        href={`/${schoolId}/${userId}/dashboard/timetable`}
                         className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                       >
                         View All Timetables

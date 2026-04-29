@@ -9,12 +9,14 @@ const path = require('path');
 dotenv.config();
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('✅ Connected to MongoDB'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err.message);
+  if (err.code === 'ETIMEOUT') {
+    console.error('👉 TIP: This is likely a DNS issue. Try changing your DNS to 8.8.8.8');
+  }
+});
 
 // Add this after mongoose connection is established
 mongoose.connection.on('connected', async () => {
@@ -228,7 +230,7 @@ try {
 try {
   console.log('15. Loading due date config routes...');
   const dueDateConfig = require('./routes/dueDateConfig');
-  // app.use('/api/due-date-config', dueDateConfig);
+  app.use('/api/due-date-config', dueDateConfig);
   console.log('✅ Due date config routes loaded successfully');
 } catch (error) {
   console.error('❌ Failed to load due date config routes:', error.message);
@@ -405,7 +407,7 @@ app.get('/api/socket/status', (req, res) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Route not found',

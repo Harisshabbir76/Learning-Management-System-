@@ -47,7 +47,7 @@ export default function CreateCourse() {
   const pathname = usePathname();
   const pathSegments = pathname.split('/');
   const schoolId = pathSegments[1];
-  const userID = pathSegments[2];
+  const userId = pathSegments[2];
 
   const [form, setForm] = useState<CourseFormData>({ 
     name: '', 
@@ -112,15 +112,15 @@ export default function CreateCourse() {
         }
 
         const rawSchool = user?.school || userData.data?.school;
-        const userSchoolId = typeof rawSchool === 'string'
+        const userschoolId = typeof rawSchool === 'string'
           ? rawSchool
           : rawSchool?._id || rawSchool?.id;
 
-        if (!userSchoolId) throw new Error('Invalid school ID');
+        if (!userschoolId) throw new Error('Invalid school ID');
 
         // Fetch school details
         const schoolRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/schools/${userSchoolId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/schools/${userschoolId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!schoolRes.ok) throw new Error('School not found');
@@ -248,7 +248,7 @@ export default function CreateCourse() {
 
       if (res.ok) {
         toast.success('Course created successfully');
-        router.push(`/${schoolId}/${userID}/dashboard/courses`);
+        router.push(`/${schoolId}/${userId}/dashboard/courses`);
       } else {
         // Handle authentication errors specifically
         if (res.status === 401 || res.status === 403) {
@@ -329,7 +329,7 @@ export default function CreateCourse() {
           </p>
         </div>
         <Link
-          href={`/${schoolId}/${userID}/dashboard/courses`}
+          href={`/${schoolId}/${userId}/dashboard/courses`}
           className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Back to Courses
@@ -494,7 +494,7 @@ export default function CreateCourse() {
           <div className="flex gap-3 pt-6 border-t border-gray-200">
             <button 
               type="button"
-              onClick={() => router.push(`/${schoolId}/${userID}/dashboard/courses`)}
+              onClick={() => router.push(`/${schoolId}/${userId}/dashboard/courses`)}
               className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={loading}
             >

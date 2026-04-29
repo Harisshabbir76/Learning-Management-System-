@@ -12,7 +12,7 @@ interface Teacher {
 
 export default function CreateSectionPage() {
   const router = useRouter();
-  const { schoolID, userID } = useParams();
+  const { schoolId, userId } = useParams();
   const [formData, setFormData] = useState({
     name: '',
     sectionCode: '',
@@ -183,7 +183,7 @@ export default function CreateSectionPage() {
       });
 
       setTimeout(() => {
-        router.push(`/${schoolID}/${userID}/dashboard/section`);
+        router.push(`/${schoolId}/${userId}/dashboard/section`);
       }, 2000);
 
     } catch (err: any) {
@@ -238,7 +238,7 @@ export default function CreateSectionPage() {
     <div className="max-w-2xl mx-auto p-6">
       <div className="flex items-center mb-6">
         <Link 
-          href={`/${schoolID}/${userID}/dashboard/section`}
+          href={`/${schoolId}/${userId}/dashboard/section`}
           className="mr-4 p-2 rounded hover:bg-gray-100 transition-colors"
         >
           ← Back
@@ -371,7 +371,7 @@ export default function CreateSectionPage() {
         <div className="flex justify-end gap-2 pt-4">
           <button
             type="button"
-            onClick={() => router.push(`/${schoolID}/${userID}/dashboard/section`)}
+            onClick={() => router.push(`/${schoolId}/${userId}/dashboard/section`)}
             className="px-4 py-2 border rounded hover:bg-gray-50 transition-colors"
           >
             Cancel

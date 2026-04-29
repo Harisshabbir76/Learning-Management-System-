@@ -16,6 +16,11 @@ const userSchema = new Schema({
     enum: ['student', 'teacher', 'parent', 'faculty', 'admin'],
     required: true 
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other'],
+    default: 'male'
+  },
   school: { type: Schema.Types.ObjectId, ref: 'School', required: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
   roleProfile: { type: Schema.Types.ObjectId, refPath: 'roleRef' },

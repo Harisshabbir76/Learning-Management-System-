@@ -1,226 +1,188 @@
-// app/login/page.jsx
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
-import { 
-  LockClosedIcon, 
-  EnvelopeIcon, 
-  AcademicCapIcon,
-  EyeIcon,
-  EyeSlashIcon
-} from '@heroicons/react/24/outline';
-import toast from 'react-hot-toast';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
 
-  const togglePasswordVisibility = () => {
-    setPasswordVisible(!passwordVisible);
-  };
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Verifying credentials...");
 
     try {
       const result = await login(email, password);
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Login failed');
-      }
-
-      if (!result.user?.userId) {
-        throw new Error('User ID not available in response');
-      }
-
-      // Get school ID - handle both string and object formats
-      let schoolId;
-      if (result.user.school) {
-        schoolId = typeof result.user.school === 'string' 
-          ? result.user.school 
-          : result.user.school._id;
+      if (result.success) {
+        toast.success(`Welcome back, ${result.user.name}`, { id: loadingToast });
+        const schoolId = typeof result.user.school === "string" ? result.user.school : result.user.school?._id;
+        router.push(`/${schoolId}/${result.user.userId}/dashboard`);
       } else {
-        throw new Error('School information not available');
+        toast.error(result.message || "Invalid credentials", { id: loadingToast });
       }
-
-      // Redirect to dashboard
-      router.push(`/${schoolId}/${result.user.userId}/dashboard`);
-
-    } catch (error) {
-      toast.error(error.message || 'Login failed. Please try again.');
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred", { id: loadingToast });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <AcademicCapIcon className="mx-auto h-12 w-12 text-indigo-600" />
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Or{' '}
-            <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-              create a new account
-            </Link>
-          </p>
-        </div>
+  if (!isMounted) return null;
 
-        <div className="bg-white py-8 px-4 shadow rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
-                Email Address <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-background">
+      {/* Animated Background Decorations */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] animate-blob"></div>
+      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-[100px] animate-blob animation-delay-2000"></div>
+
+      <div className="w-full max-w-[1100px] grid lg:grid-cols-2 glass rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 animate-fade-in-up">
+        {/* Left Side: Illustration & Branding */}
+        <div className="hidden lg:flex flex-col justify-center p-12 bg-gradient-to-br from-primary to-purple-700 text-white relative">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div className="relative z-10">
+            <Link href="/" className="inline-flex items-center space-x-3 mb-12 group">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary text-2xl shadow-lg group-hover:scale-110 transition-transform">
+                <i className="fas fa-graduation-cap"></i>
+              </div>
+              <span className="text-2xl font-bold tracking-tight">Antigravity LMS</span>
+            </Link>
+
+            <h2 className="text-4xl font-bold mb-6 leading-tight">
+              Elevate Your Learning <br />
+              <span className="text-purple-200 font-medium text-3xl">Experience to the Next Level</span>
+            </h2>
+            
+            <p className="text-white/80 text-lg mb-12 max-w-md leading-relaxed">
+              Join thousands of students and teachers already transforming their educational journey with our modern platform.
+            </p>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="glass p-4 rounded-2xl border-white/10 bg-white/5">
+                <div className="text-2xl mb-1 text-white">
+                  <i className="fas fa-bolt"></i>
                 </div>
-                <input
-                  id="email-address"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="you@example.com"
-                />
+                <div className="font-bold">Fast Performance</div>
+                <div className="text-xs text-white/60">Turbopack Powered</div>
+              </div>
+              <div className="glass p-4 rounded-2xl border-white/10 bg-white/5">
+                <div className="text-2xl mb-1 text-white">
+                  <i className="fas fa-shield-halved"></i>
+                </div>
+                <div className="font-bold">Secure Access</div>
+                <div className="text-xs text-white/60">JWT Encrypted</div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
+        {/* Right Side: Login Form */}
+        <div className="p-8 lg:p-16 flex flex-col justify-center bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+          <div className="max-w-md mx-auto w-full">
+            <div className="mb-10 lg:hidden">
+               <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg mb-4">
+                <i className="fas fa-graduation-cap"></i>
+              </div>
+              <h2 className="text-3xl font-bold">Welcome Back</h2>
+              <p className="text-muted-foreground mt-2">Log in to your account</p>
+            </div>
+
+            <h1 className="hidden lg:block text-3xl font-bold mb-2">Welcome Back</h1>
+            <p className="hidden lg:block text-muted-foreground mb-10">Please enter your details to sign in.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium ml-1">Email Address</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
+                    <i className="fas fa-envelope"></i>
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border border-input bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
+                    placeholder="name@example.com"
+                    required
+                  />
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={passwordVisible ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Enter your password"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-sm font-medium">Password</label>
+                  <Link href="/forgot-password" size="sm" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
+                    <i className="fas fa-lock"></i>
+                  </span>
+                  <input
+                    type={passwordVisible ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-12 py-4 rounded-2xl border border-input bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
+                    placeholder="password"
+                    required
+                  />
                   <button
                     type="button"
-                    onClick={togglePasswordVisibility}
-                    className="text-gray-400 hover:text-gray-500"
+                    onClick={() => setPasswordVisible(!passwordVisible)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                   >
-                    {passwordVisible ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                    <i className={`fas ${passwordVisible ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                   </button>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
+              <div className="flex items-center space-x-2 ml-1">
+                <input type="checkbox" id="remember" className="w-4 h-4 rounded border-input text-primary focus:ring-primary" />
+                <label htmlFor="remember" className="text-sm text-muted-foreground">Remember for 30 days</label>
               </div>
 
-              <div className="text-sm">
-                <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Forgot your password?
-                </Link>
-              </div>
-            </div>
-
-            <div>
               <button
                 type="submit"
-                disabled={loading}
-                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                  loading ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg hover:shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-70 disabled:hover:scale-100 flex items-center justify-center space-x-2"
               >
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <LockClosedIcon
-                    className="h-5 w-5 text-indigo-500 group-hover:text-indigo-400"
-                    aria-hidden="true"
-                  />
-                </span>
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Signing in...
-                  </>
+                {isSubmitting ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  'Sign in'
+                  <>
+                    <span>Sign In</span>
+                    <i className="fas fa-arrow-right ml-2 text-sm"></i>
+                  </>
                 )}
               </button>
-            </div>
+            </form>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">New to our platform?</span>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <Link
-                  href="/signup"
-                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Create new account
+            <div className="mt-10 pt-10 border-t border-border text-center">
+              <p className="text-muted-foreground">
+                Don't have an account?{" "}
+                <Link href="/signup" className="text-primary font-bold hover:underline">
+                  Join our community
                 </Link>
-              </div>
+              </p>
             </div>
-          </form>
-        </div>
-
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            By signing in, you agree to our{' '}
-            <Link href="/terms" className="text-indigo-600 hover:text-indigo-500">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="text-indigo-600 hover:text-indigo-500">
-              Privacy Policy
-            </Link>
-          </p>
+          </div>
         </div>
       </div>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     </div>
   );
 }

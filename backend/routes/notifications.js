@@ -3,7 +3,7 @@ const router = express.Router();
 const Notification = require('../Models/Notification');
 const User = require('../Models/User');
 const Course = require('../Models/Course');
-const Section = require('../Models/section');
+const Section = require('../Models/Section');
 const authMiddleware = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 

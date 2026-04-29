@@ -60,7 +60,7 @@ interface Section {
 }
 
 export default function EditCourse() {
-  const { schoolId, userID, courseId } = useParams();
+  const { schoolId, userId, courseId } = useParams();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -264,15 +264,15 @@ export default function EditCourse() {
       }
 
       // Validate that the teacher belongs to the same school
-      const teacherSchoolId = typeof teacher.school === 'string'
+      const teacherschoolId = typeof teacher.school === 'string'
         ? teacher.school
         : teacher.school?._id;
       
-      const currentUserSchoolId = typeof currentUser?.school === 'string'
+      const currentUserschoolId = typeof currentUser?.school === 'string'
         ? currentUser?.school
         : currentUser?.school?._id;
 
-      if (teacherSchoolId !== currentUserSchoolId) {
+      if (teacherschoolId !== currentUserschoolId) {
         toast.error('Teacher does not belong to your school');
         return;
       }
@@ -360,7 +360,7 @@ export default function EditCourse() {
 
       if (res.ok) {
         toast.success('Course updated successfully');
-        router.push(`/${schoolId}/${userID}/dashboard/courses/${courseId}`);
+        router.push(`/${schoolId}/${userId}/dashboard/courses/${courseId}`);
       } else {
         throw new Error(data.message || data.error || 'Failed to update course');
       }
@@ -393,7 +393,7 @@ export default function EditCourse() {
           </div>
         </div>
         <Link
-          href={`/${schoolId}/${userID}/dashboard/courses`}
+          href={`/${schoolId}/${userId}/dashboard/courses`}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <FiArrowLeft className="mr-2" />
@@ -409,7 +409,7 @@ export default function EditCourse() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <Link
-            href={`/${schoolId}/${userID}/dashboard/courses/${courseId}`}
+            href={`/${schoolId}/${userId}/dashboard/courses/${courseId}`}
             className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
           >
             <FiArrowLeft className="mr-2" />
@@ -616,7 +616,7 @@ export default function EditCourse() {
           {/* Form Actions */}
           <div className="flex gap-3 pt-6 border-t border-gray-200">
             <Link
-              href={`/${schoolId}/${userID}/dashboard/courses/${courseId}`}
+              href={`/${schoolId}/${userId}/dashboard/courses/${courseId}`}
               className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel

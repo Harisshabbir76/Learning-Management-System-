@@ -34,16 +34,16 @@ interface SubmissionWithGrade {
 }
 
 export default function AssignmentsListPage() {
-  const { schoolID, userID, courseId } = useParams() as {
-    schoolID: string;
-    userID: string;
+  const { schoolId, userId, courseId } = useParams() as {
+    schoolId: string;
+    userId: string;
     courseId: string;
   };
   
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
+  const [userId, setuserId] = useState<string>("");
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>({});
   const [submissionGrades, setSubmissionGrades] = useState<SubmissionWithGrade>({});
   
@@ -180,7 +180,7 @@ export default function AssignmentsListPage() {
         if (res.ok) {
           const data = await res.json();
           setRole(data.user?.role || "");
-          setUserId(data.user?.id || "");
+          setuserId(data.user?.id || "");
         }
       } catch (err) {
         console.error("Error fetching user info:", err);
@@ -341,7 +341,7 @@ export default function AssignmentsListPage() {
 
         {(role === "teacher" || role === "admin") && (
           <Link
-            href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/assignments/create`}
+            href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/assignments/create`}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -484,7 +484,7 @@ export default function AssignmentsListPage() {
                           </button>
                         ) : (
                           <Link
-                            href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/assignments/${assignment._id}/submit`}
+                            href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/assignments/${assignment._id}/submit`}
                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-center text-sm flex items-center justify-center"
                           >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,7 +498,7 @@ export default function AssignmentsListPage() {
 
                     {(role === "teacher" || role === "admin") && (
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/assignments/${assignment._id}/submissions`}
+                        href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/assignments/${assignment._id}/submissions`}
                         className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-center text-sm flex items-center justify-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,8 +534,8 @@ export default function AssignmentsListPage() {
           isOpen={isEditModalOpen}
           onClose={handleCloseEditModal}
           onSave={handleAssignmentUpdate}
-          schoolID={schoolID}
-          userID={userID}
+          schoolId={schoolId}
+          userId={userId}
           courseId={courseId}
         />
       )}

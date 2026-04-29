@@ -131,7 +131,7 @@ const NotificationsPage = ({ params }) => {
               
               {user.role === 'admin' && (
                 <Link 
-                  href={`/${resolvedParams.schoolID}/${resolvedParams.userID}/dashboard/notifications/create`}
+                  href={`/${resolvedParams.schoolId}/${resolvedParams.userId}/dashboard/notifications/create`}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Create Notification

@@ -68,8 +68,8 @@ interface StudentStatistics {
 export default function SectionAttendanceDetail() {
   const params = useParams();
   const router = useRouter();
-  const schoolID = params.schoolID as string;
-  const userID = params.userID as string;
+  const schoolId = params.schoolId as string;
+  const userId = params.userId as string;
   const sectionID = params.sectionid as string;
   
   const [section, setSection] = useState<Section | null>(null);
@@ -481,7 +481,7 @@ export default function SectionAttendanceDetail() {
             </div>
             <div className="flex justify-center">
               <Link 
-                href={`/${schoolID}/${userID}/dashboard/attendance`}
+                href={`/${schoolId}/${userId}/dashboard/attendance`}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
                 Back to Attendance
@@ -499,7 +499,7 @@ export default function SectionAttendanceDetail() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link 
-              href={`/${schoolID}/${userID}/dashboard/Attendance`}
+              href={`/${schoolId}/${userId}/dashboard/Attendance`}
               className="text-indigo-600 hover:text-indigo-800 font-medium mb-2 inline-block"
             >
               ← Back to Attendance

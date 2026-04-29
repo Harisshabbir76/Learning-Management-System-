@@ -139,9 +139,9 @@ export default function AttemptQuizPage() {
       
       if (pathParts.length >= 2) {
         // Assume the URL structure is /schoolId/userId/...
-        const urlSchoolId = pathParts[0];
-        const urlUserId = pathParts[1];
-        const redirectPath = `/${urlSchoolId}/${urlUserId}/dashboard/courses/${courseId}/quizzes`;
+        const urlschoolId = pathParts[0];
+        const urluserId = pathParts[1];
+        const redirectPath = `/${urlschoolId}/${urluserId}/dashboard/courses/${courseId}/quizzes`;
         console.log("Redirecting using URL parts:", redirectPath);
         router.push(redirectPath);
       } else {

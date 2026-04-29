@@ -16,7 +16,7 @@ interface Section {
 export default function CreateStudent() {
   const router = useRouter();
   const params = useParams();
-  const { schoolID, userID } = params;
+  const { schoolId, userId } = params;
   
   const [formData, setFormData] = useState({
     name: '',
@@ -116,7 +116,7 @@ export default function CreateStudent() {
         });
         // Redirect to student list after 2 seconds
         setTimeout(() => {
-          router.push(`/${schoolID}/${userID}/dashboard/student-affairs`);
+          router.push(`/${schoolId}/${userId}/dashboard/student-affairs`);
         }, 2000);
       } else {
         setError(data.message || 'Failed to create student');
@@ -154,7 +154,7 @@ export default function CreateStudent() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href={`/${schoolID}/${userID}/dashboard/student-affairs`}
+            href={`/${schoolId}/${userId}/dashboard/student-affairs`}
             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mb-4"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,7 +389,7 @@ export default function CreateStudent() {
                     </div>
                     <div className="mt-3">
                       <Link
-                        href={`/${schoolID}/${userID}/dashboard/section/create`}
+                        href={`/${schoolId}/${userId}/dashboard/section/create`}
                         className="text-sm font-medium text-yellow-800 underline hover:text-yellow-900"
                       >
                         Create New Section →
@@ -403,7 +403,7 @@ export default function CreateStudent() {
             {/* Form Actions */}
             <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
               <Link
-                href={`/${schoolID}/${userID}/dashboard/student-affairs`}
+                href={`/${schoolId}/${userId}/dashboard/student-affairs`}
                 className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel

@@ -48,8 +48,8 @@ interface ApiResponse<T> {
 export default function UserManagement() {
   const params = useParams();
   const router = useRouter();
-  const schoolID = params.schoolID as string;
-  const userID = params.userID as string;
+  const schoolId = params.schoolId as string;
+  const userId = params.userId as string;
   
   const [users, setUsers] = useState<User[]>([]);
   const [dueDateConfig, setDueDateConfig] = useState<DueDateConfig>({ 
@@ -398,7 +398,7 @@ export default function UserManagement() {
 
   // Redirect to users dashboard
   const redirectToUsersDashboard = () => {
-    router.push(`/${schoolID}/${userID}/dashboard/users`);
+    router.push(`/${schoolId}/${userId}/dashboard/users`);
   };
 
   useEffect(() => {

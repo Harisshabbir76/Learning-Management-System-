@@ -12,7 +12,7 @@ interface Assessment {
 }
 
 export default function GradesPage() {
-  const { schoolID, userID, courseId } = useParams();
+  const { schoolId, userId, courseId } = useParams();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -138,7 +138,7 @@ export default function GradesPage() {
             return (
               <Link
                 key={a._id}
-                href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/grades/${encodeURIComponent(assessmentName)}?id=${a._id}`}
+                href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/grades/${encodeURIComponent(assessmentName)}?id=${a._id}`}
                 className="block p-6 border rounded-lg hover:shadow-md transition-shadow bg-white"
               >
                 <h3 className="font-semibold text-lg mb-2">

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const mongoose = require('mongoose');
-const School = require('../Models/institure');
+const School = require('../Models/School');
 const authMiddleware = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 
@@ -120,6 +120,52 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
+
+// Get school stats (students, teachers, etc.) for dashboard
+router.get('/:id/stats', authMiddleware, async (req, res) => {
+  try {
+    const schoolId = req.params.id;
+    
+    if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid school ID format'
+      });
+    }
+
+    // Optional: Check if user belongs to this school
+    if (req.user.school.toString() !== schoolId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    const [studentCount, teacherCount, courseCount, sectionCount] = await Promise.all([
+      require('../Models/User').countDocuments({ school: schoolId, role: 'student' }),
+      require('../Models/User').countDocuments({ school: schoolId, role: 'teacher' }),
+      require('../Models/Course').countDocuments({ school: schoolId }),
+      require('../Models/Section').countDocuments({ school: schoolId })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        students: studentCount,
+        teachers: teacherCount,
+        courses: courseCount,
+        sections: sectionCount
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching school stats:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching school stats',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }

@@ -40,7 +40,6 @@ const timetableSchema = new mongoose.Schema({
 });
 
 // Index for better query performance
-timetableSchema.index({ section: 1 });
 timetableSchema.index({ 'schedule.teacher': 1 });
 timetableSchema.index({ 'schedule.course': 1 });
 

@@ -7,7 +7,7 @@ const Student = require('../Models/Student');
 const Teacher = require('../Models/Teacher');
 const Faculty = require('../Models/Faculty');
 const Admin = require('../Models/Admin');
-const Section = require('../Models/section');
+const Section = require('../Models/Section');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 

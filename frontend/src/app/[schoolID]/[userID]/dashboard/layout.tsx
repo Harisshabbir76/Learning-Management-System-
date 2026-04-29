@@ -9,6 +9,16 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+// Helper to get initials from school name
+const getInitials = (name: string) => {
+  if (!name) return 'S';
+  return name
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .join('')
+    .substring(0, 2);
+};
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout, themeColor, schoolId, loading, permissions, unreadCount, fetchUnreadCount } = useAuth();
   const [showModal, setShowModal] = useState(false);
@@ -16,440 +26,246 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Safe default for themeColor
-  const safeThemeColor = themeColor || '#3b82f6'; // Default to blue-600
+  const safeThemeColor = themeColor || '#6366f1';
 
-  // Get reliable schoolId and userId
-  const getCurrentIds = () => {
-    const pathParts = pathname.split('/').filter(Boolean);
-    const pathSchoolId = pathParts[0];
-    const pathUserId = pathParts[1];
-    
-    return {
-      schoolId: pathSchoolId || schoolId,
-      userId: pathUserId || user?.userId
-    };
-  };
-
-  const { schoolId: currentSchoolId, userId } = getCurrentIds();
-
-  // Fetch unread notifications count
   useEffect(() => {
     if (user) {
       fetchUnreadCount();
     }
   }, [user, fetchUnreadCount]);
 
-  const getSchoolLogoUrl = () => {
-    try {
-      if (!user?.school?.logoUrl) return null;
-      if (user.school.logoUrl.startsWith('http')) {
-        return user.school.logoUrl;
-      }
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const cleanPath = user.school.logoUrl.startsWith('/') 
-        ? user.school.logoUrl 
-        : `/${user.school.logoUrl}`;
-      return `${baseUrl}${cleanPath}`;
-    } catch (error) {
-      console.error('Error constructing logo URL:', error);
-      return null;
-    }
-  };
-
   useEffect(() => {
-    if (!loading && (!currentSchoolId || !userId)) {
+    if (!loading && (!user || !user.school)) {
       router.push('/login');
     }
-  }, [loading, currentSchoolId, userId, router]);
+  }, [loading, user, router]);
 
-  // ✅ Render role-specific sidebar links
-  const renderRoleSpecificLinks = (base: string, linkClass: string) => {
+  const renderRoleSpecificLinks = (base: string) => {
     if (!user?.role) return [];
+    
+    const linkClass = (path: string) => `
+      flex items-center py-3 px-4 rounded-2xl transition-all duration-300 group mb-1 text-sm font-medium
+      ${pathname === path 
+        ? 'bg-white text-primary shadow-lg shadow-primary/20 scale-[1.02]' 
+        : 'text-white/70 hover:bg-white/10 hover:text-white'}
+    `;
 
-    const commonLinks = [
-      <Link key="dashboard" href={`${base}`} className={linkClass}>
-        <i className="w-5 text-center fas fa-chart-pie mr-3"></i> Dashboard
-      </Link>,
-      <Link key="settings" href={`${base}/settings`} className={linkClass}>
-        <i className="w-5 text-center fas fa-cog mr-3"></i> Settings
-      </Link>
+    const links = [
+      { id: 'dashboard', href: base, label: 'Overview', icon: 'fas fa-chart-line' },
+      { id: 'settings', href: `${base}/settings`, label: 'Settings', icon: 'fas fa-cog' },
     ];
 
-    // Safe permissions check - use empty array if permissions is undefined
-    const userPermissions = permissions || [];
-
-    switch (user.role) {
-      case 'admin':
-        return [
-          ...commonLinks,
-          <Link key="courses" href={`${base}/courses`} className={linkClass}>
-            <i className="w-5 text-center fas fa-book mr-3"></i> Courses
-          </Link>,
-          <Link key="users" href={`${base}/users`} className={linkClass}>
-            <i className="w-5 text-center fas fa-users mr-3"></i> Users
-          </Link>,
-          <Link key="teachers" href={`${base}/manage-teachers`} className={linkClass}>
-            <i className="w-5 text-center fas fa-chalkboard-teacher mr-3"></i> Manage Teachers
-          </Link>,
-          <Link key="student-affairs" href={`${base}/student-affairs`} className={linkClass}>
-            <i className="w-5 text-center fas fa-user-graduate mr-3"></i> Student Affairs
-          </Link>,
-          <Link key="sections" href={`${base}/section`} className={linkClass}>
-            <i className="w-5 text-center fas fa-door-open mr-3"></i> Classes
-          </Link>,
-          <Link key="timetable" href={`${base}/timetable`} className={linkClass}>
-            <i className="w-5 text-center fas fa-calendar-alt mr-3"></i> Timetables
-          </Link>,
-          <Link key="permissions" href={`${base}/permissions`} className={linkClass}>
-            <i className="w-5 text-center fas fa-key mr-3"></i> Permissions
-          </Link>,
-          <Link key="reports" href={`${base}/reports`} className={linkClass}>
-            <i className="w-5 text-center fas fa-chart-bar mr-3"></i> Reports
-          </Link>
-        ];
-
-      case 'teacher':
-        const teacherLinks = [
-          ...commonLinks,
-          <Link key="my-courses" href={`${base}/my-courses`} className={linkClass}>
-            <i className="w-5 text-center fas fa-book-open mr-3"></i> My Courses
-          </Link>,
-          <Link key="students" href={`${base}/students`} className={linkClass}>
-            <i className="w-5 text-center fas fa-user-graduate mr-3"></i> Students
-          </Link>,
-          <Link key="marks" href={`${base}/marks`} className={linkClass}>
-            <i className="w-5 text-center fas fa-check-circle mr-3"></i> Marks
-          </Link>,
-          <Link key="attendance" href={`${base}/attendance`} className={linkClass}>
-            <i className="w-5 text-center fas fa-calendar-check mr-3"></i> Attendance
-          </Link>,
-          <Link key="resources" href={`${base}/resources`} className={linkClass}>
-            <i className="w-5 text-center fas fa-folder mr-3"></i> Resources
-          </Link>
-        ];
-
-        // Add permission-based links for teachers - use userPermissions instead of permissions
-        if (userPermissions.includes('student_affairs')) {
-          teacherLinks.push(
-            <Link key="student-affairs-admin" href={`${base}/student-affairs`} className={linkClass}>
-              <i className="w-5 text-center fas fa-user-graduate mr-3"></i> Student Affairs
-            </Link>,
-            <Link key="courses-admin" href={`${base}/courses`} className={linkClass}>
-              <i className="w-5 text-center fas fa-book mr-3"></i> Courses
-            </Link>,
-            <Link key="teachers-admin" href={`${base}/manage-teachers`} className={linkClass}>
-              <i className="w-5 text-center fas fa-chalkboard-teacher mr-3"></i> Manage Teachers
-            </Link>,
-            <Link key="sections-admin" href={`${base}/section`} className={linkClass}>
-              <i className="w-5 text-center fas fa-door-open mr-3"></i> Classes
-            </Link>,
-            <Link key="timetable-admin" href={`${base}/timetable`} className={linkClass}>
-              <i className="w-5 text-center fas fa-calendar-alt mr-3"></i> Timetables
-            </Link>
-          );
-        }
-        if (userPermissions.includes('accounts_office')) {
-          teacherLinks.push(
-            <Link key="accounts-office" href={`${base}/accounts-office`} className={linkClass}>
-              <i className="w-5 text-center fas fa-dollar-sign mr-3"></i> Accounts Office
-            </Link>
-          );
-        }
-        
-        return teacherLinks;
-
-      case 'faculty':
-        const facultyLinks = [
-          ...commonLinks,
-        ];
-
-        // Add permission-based links for faculty - use userPermissions instead of permissions
-        if (userPermissions.includes('student_affairs')) {
-          facultyLinks.push(
-            <Link key="student-affairs-admin" href={`${base}/student-affairs`} className={linkClass}>
-              <i className="w-5 text-center fas fa-user-graduate mr-3"></i> Student Affairs
-            </Link>,
-            <Link key="courses-admin" href={`${base}/courses`} className={linkClass}>
-              <i className="w-5 text-center fas fa-book mr-3"></i> Courses
-            </Link>,
-            <Link key="teachers-admin" href={`${base}/manage-teachers`} className={linkClass}>
-              <i className="w-5 text-center fas fa-chalkboard-teacher mr-3"></i> Manage Teachers
-            </Link>,
-            <Link key="sections-admin" href={`${base}/section`} className={linkClass}>
-              <i className="w-5 text-center fas fa-door-open mr-3"></i> Classes
-            </Link>,
-            <Link key="timetable-admin" href={`${base}/timetable`} className={linkClass}>
-              <i className="w-5 text-center fas fa-calendar-alt mr-3"></i> Timetables
-            </Link>
-          );
-        }
-        if (userPermissions.includes('accounts_office')) {
-          facultyLinks.push(
-            <Link key="accounts-office" href={`${base}/accounts-office`} className={linkClass}>
-              <i className="w-5 text-center fas fa-dollar-sign mr-3"></i> Accounts Office
-            </Link>
-          );
-        }
-        return facultyLinks;
-
-      case 'student':
-        return [
-          ...commonLinks,
-          <Link key="my-courses" href={`${base}/my-courses`} className={linkClass}>
-            <i className="w-5 text-center fas fa-book-open mr-3"></i> My Courses
-          </Link>,
-          <Link key="attendance" href={`${base}/attendance`} className={linkClass}>
-            <i className="w-5 text-center fas fa-calendar-check mr-3"></i> Attendance
-          </Link>,
-          <Link key="marks" href={`${base}/marks`} className={linkClass}>
-            <i className="w-5 text-center fas fa-check-circle mr-3"></i> Marks
-          </Link>,
-          <Link key="resources" href={`${base}/resources`} className={linkClass}>
-            <i className="w-5 text-center fas fa-folder mr-3"></i> Resources
-          </Link>,
-          <Link key="schedule" href={`${base}/schedule`} className={linkClass}>
-            <i className="w-5 text-center fas fa-calendar-alt mr-3"></i> Schedule
-          </Link>,
-          <Link key="fees" href={`${base}/fees`} className={linkClass}>
-            <i className="w-5 text-center fas fa-credit-card mr-3"></i> Fees
-          </Link>
-        ];
-
-      default:
-        return commonLinks;
+    if (user.role === 'admin' || (user.role === 'faculty' && permissions?.includes('student_affairs'))) {
+      links.splice(1, 0, 
+        { id: 'courses', href: `${base}/courses`, label: 'Courses', icon: 'fas fa-book' },
+        { id: 'users', href: `${base}/users`, label: 'Users', icon: 'fas fa-users' },
+        { id: 'sections', href: `${base}/section`, label: 'Classes', icon: 'fas fa-school' },
+        { id: 'timetable', href: `${base}/timetable`, label: 'Timetables', icon: 'fas fa-calendar-alt' }
+      );
     }
+
+    if (user.role === 'student') {
+      links.splice(1, 0,
+        { id: 'my-courses', href: `${base}/my-courses`, label: 'My Courses', icon: 'fas fa-book-open' },
+        { id: 'attendance', href: `${base}/attendance`, label: 'Attendance', icon: 'fas fa-calendar-check' },
+        { id: 'marks', href: `${base}/marks`, label: 'Academic Record', icon: 'fas fa-award' }
+      );
+    }
+
+    return links.map(link => (
+      <Link key={link.id} href={link.href} className={linkClass(link.href)}>
+        <i className={`${link.icon} w-5 mr-3 text-center group-hover:scale-110 transition-transform`}></i>
+        <span>{link.label}</span>
+      </Link>
+    ));
   };
 
-  const displaySchoolName = typeof user?.school === 'object' 
-    ? user.school.displayName || user.school.name
-    : user?.school;
+  const schoolName = typeof user?.school === 'object' ? (user.school.displayName || user.school.name) : 'School Platform';
 
-  if (loading || !currentSchoolId || !userId) {
+  // Gender-based avatar logic
+  const getAvatarIcon = () => {
+    if (user?.gender === 'female') return 'fas fa-user-nurse';
+    return 'fas fa-user-tie';
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary">
+            {getInitials(schoolName)}
+          </div>
         </div>
       </div>
     );
   }
 
-  const logoUrl = getSchoolLogoUrl();
-  const schoolInitial = user?.school?.displayName?.charAt(0)?.toUpperCase() || 
-                      user?.school?.name?.charAt(0)?.toUpperCase() || 'S';
-  
-  // Safe permissions for display
-  const userPermissions = permissions || [];
-
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Mobile Menu Button */}
-      <button 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white shadow-md"
-        style={{ color: safeThemeColor }}
-      >
-        <i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'}`}></i>
-      </button>
-
-      {/* Sidebar Overlay for Mobile */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-
+    <div className="min-h-screen flex bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Sidebar */}
       <aside 
-        className={`w-64 text-white p-4 flex flex-col fixed h-full shadow-lg z-40 transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+        className={`fixed top-4 left-4 bottom-4 w-64 rounded-[2rem] p-6 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2rem)]'} md:translate-x-0 overflow-hidden shadow-2xl`}
         style={{ 
           backgroundColor: safeThemeColor,
-          backgroundImage: `linear-gradient(135deg, ${adjustColor(safeThemeColor, -30)} 0%, ${safeThemeColor} 100%)`
+          backgroundImage: `linear-gradient(165deg, ${safeThemeColor} 0%, ${adjustColor(safeThemeColor, -20)} 100%)`
         }}
       >
-        {/* Logo and School Name - Reduced size */}
-        <div className="mb-3 pt-2 flex flex-col items-center">
-          <div className="flex items-center justify-center mb-2">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center border-2 border-white/30 shadow-lg mr-2">
-              {logoUrl ? (
-                <>
-                  <img 
-                    src={`${logoUrl}?${new Date().getTime()}`} 
-                    alt="School Logo"
-                    className="w-full h-full object-cover"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 bg-white/20 flex items-center justify-center text-white font-bold text-xl"
-                    style={{ display: 'none' }}
-                  >
-                    {schoolInitial}
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white font-bold text-xl">
-                  {schoolInitial}
-                </div>
-              )}
-            </div>
-            {displaySchoolName && (
-              <h2 className="text-sm font-bold text-white max-w-[120px]">
-                {displaySchoolName}
-              </h2>
-            )}
-          </div>
-        </div>
+        {/* Animated Blobs inside Sidebar */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-blob"></div>
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-blob animation-delay-2000"></div>
 
-        {/* User Info - Reduced size */}
-        <div className="mb-4 text-center p-3 bg-white/10 rounded-lg backdrop-blur-sm border border-white/20">
-          <h2 className="text-sm font-semibold text-white truncate">{user?.name || 'User'}</h2>
-          <p className="text-xs text-white/80 mt-1">ID: {user?.userId || 'N/A'}</p>
-          <p className="text-xs text-white/80 mt-1 capitalize bg-white/20 px-2 py-0.5 rounded-full inline-block">
-            {user?.role}
-          </p>
-          
-          {/* Display permissions if user has any */}
-          {userPermissions && userPermissions.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs text-white/80 mb-1">Permissions:</p>
-              <div className="flex flex-wrap justify-center gap-1">
-                {userPermissions
-                  .filter(permission => 
-                    permission === 'student_affairs' || permission === 'accounts_office'
-                  )
-                  .map((permission: string, index: number) => (
-                    <span
-                      key={index}
-                      className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full"
-                    >
-                      {permission.replace('_', ' ')}
-                    </span>
-                  ))}
+        <div className="relative z-10 flex flex-col h-full">
+          {/* Logo Section */}
+          <div className="mb-10 flex items-center space-x-3 px-2">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-lg group">
+              <i className="fas fa-graduation-cap text-xl group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div className="overflow-hidden">
+              <h2 className="text-lg font-bold text-white truncate leading-tight">{schoolName}</h2>
+              <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold">Learning Hub</span>
+            </div>
+          </div>
+
+          {/* User Profile Summary */}
+          <div className="mb-8 p-4 glass rounded-2xl bg-white/10 border-white/10">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white">
+                <i className={getAvatarIcon()}></i>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{user?.name}</p>
+                <p className="text-[10px] text-white/70 uppercase tracking-tighter">{user?.role}</p>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Notifications Icon at the top */}
-        <div className="mb-4 flex justify-center">
-          <Link 
-            href={`/${currentSchoolId}/${userId}/dashboard/notifications`}
-            className="relative p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors duration-200 group"
-          >
-            <i className="fas fa-bell text-white text-lg group-hover:scale-110 transition-transform"></i>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
+            <Link 
+              href={`/${schoolId}/${user?.userId}/dashboard/notifications`}
+              className="flex items-center justify-between px-3 py-2 bg-white/10 rounded-xl text-[10px] text-white/90 hover:bg-white/20 transition-colors"
+            >
+              <span className="flex items-center">
+                <i className="fas fa-bell mr-2"></i> Notifications
               </span>
-            )}
-          </Link>
-        </div>
+              {unreadCount > 0 && (
+                <span className="bg-red-500 px-1.5 py-0.5 rounded-md font-bold">{unreadCount}</span>
+              )}
+            </Link>
+          </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 space-y-1 overflow-y-auto py-2">
-          <Link 
-            href="/" 
-            className="flex items-center py-2 px-3 rounded-xl hover:bg-white/10 transition-all duration-200 mb-1 group text-sm"
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+            {renderRoleSpecificLinks(`/${schoolId}/${user?.userId}/dashboard`)}
+          </nav>
+
+          {/* Logout */}
+          <button
+            onClick={() => setShowModal(true)}
+            className="mt-6 flex items-center py-3 px-4 rounded-2xl text-white/70 hover:bg-white/10 hover:text-white transition-all duration-300 group text-sm font-medium"
           >
-            <i className="w-4 text-center fas fa-home mr-2 group-hover:scale-110 transition-transform"></i> 
-            <span>Home</span>
-          </Link>
-          {renderRoleSpecificLinks(
-            `/${currentSchoolId}/${userId}/dashboard`, 
-            "flex items-center py-2 px-3 rounded-xl hover:bg-white/10 transition-all duration-200 group text-sm"
-          )}
-        </nav>
-
-        {/* Logout Button */}
-        <button
-          onClick={() => setShowModal(true)}
-          className="mt-auto flex items-center py-2 px-3 rounded-xl hover:bg-white/10 transition-all duration-200 group text-sm"
-        >
-          <i className="w-4 text-center fas fa-sign-out-alt mr-2 group-hover:scale-110 transition-transform"></i> 
-          <span>Logout</span>
-        </button>
+            <i className="fas fa-sign-out-alt w-5 mr-3 text-center group-hover:scale-110 transition-transform"></i>
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className={`flex-1 p-6 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'} overflow-auto`}>
-        <div className="bg-white rounded-xl shadow-sm p-6 min-h-full border border-gray-100">
+      {/* Main Content Area */}
+      <main className={`flex-1 min-h-screen transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] 
+        ${isSidebarOpen ? 'md:ml-[18rem]' : 'ml-0'} p-4 md:p-8 relative`}>
+        
+        {/* Top Floating Header - Non-sticky as requested */}
+        <header className="z-30 mb-8 glass rounded-[1.5rem] p-4 flex justify-between items-center animate-fade-in-up border-white/20 shadow-xl">
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              <i className={`fas ${isSidebarOpen ? 'fa-indent' : 'fa-outdent'} text-lg`}></i>
+            </button>
+            <div className="hidden md:block">
+              <h1 className="text-xl font-bold tracking-tight">Welcome, {user?.name}</h1>
+              <p className="text-xs text-muted-foreground font-medium">Keep up the great work today</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-purple-500 p-[2px] shadow-lg shadow-primary/20">
+                <div className="w-full h-full bg-white dark:bg-black rounded-[9px] flex items-center justify-center font-bold text-primary">
+                  <i className={getAvatarIcon()}></i>
+                </div>
+             </div>
+          </div>
+        </header>
+
+        {/* Page Content wrapper */}
+        <div className="animate-fade-in-up delay-100 min-h-[calc(100vh-10rem)]">
           {children}
         </div>
+
+        {/* Footer */}
+        <footer className="mt-12 py-8 text-center border-t border-border/50">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+            © 2024 Antigravity Learning Systems • High-End Educational ERP
+          </p>
+        </footer>
       </main>
 
-      {/* Logout Confirmation Modal */}
+      {/* Logout Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-xl max-w-sm w-full mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <i className="fas fa-sign-out-alt text-red-500 mr-2"></i> Confirm Logout
-            </h3>
-            <p className="mb-6 text-gray-600">Are you sure you want to logout?</p>
-            <div className="flex justify-end gap-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] animate-fade-in">
+          <div className="glass-dark p-8 rounded-[2rem] max-w-sm w-full mx-4 shadow-2xl border-white/10 animate-fade-in-up">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl">
+              <i className="fas fa-sign-out-alt"></i>
+            </div>
+            <h3 className="text-xl font-bold text-center text-white mb-2">Ready to Leave?</h3>
+            <p className="text-center text-white/60 mb-8 text-sm">We will save your progress for your next session. Hope to see you back soon</p>
+            <div className="grid grid-cols-2 gap-4">
               <button
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="py-3 px-4 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-all text-sm font-bold"
                 onClick={() => setShowModal(false)}
               >
-                Cancel
+                Go Back
               </button>
               <button
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center"
+                className="py-3 px-4 rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all text-sm font-bold"
                 onClick={() => {
                   setShowModal(false);
                   logout();
                 }}
               >
-                <i className="fas fa-sign-out-alt mr-2"></i> Logout
+                Sign Out
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Font Awesome for icons */}
+      {/* Global CSS for Sidebar & Icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255,255,255,0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.2);
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 }
 
-// Updated adjustColor function with safety checks
-function adjustColor(color, amount) {
-  if (!color) return '#3b82f6'; // Return default color if undefined
-  
-  let usePound = false;
-  if (color.startsWith('#')) {
-    color = color.slice(1);
-    usePound = true;
-  }
-
-  // Handle named colors or invalid colors
-  if (color.length !== 3 && color.length !== 6) {
-    return usePound ? '#' + color : color;
-  }
-
-  try {
-    const num = parseInt(color, 16);
-    let r = (num >> 16) + amount;
-    let g = ((num >> 8) & 0x00FF) + amount;
-    let b = (num & 0x0000FF) + amount;
-
-    r = Math.min(Math.max(0, r), 255);
-    g = Math.min(Math.max(0, g), 255);
-    b = Math.min(Math.max(0, b), 255);
-
-    return (usePound ? "#" : "") + (b | (g << 8) | (r << 16)).toString(16).padStart(6, '0');
-  } catch (error) {
-    console.error('Error adjusting color:', error);
-    return usePound ? '#' + color : color;
-  }
+function adjustColor(color: string, amount: number) {
+  if (!color || !color.startsWith('#')) return color;
+  const num = parseInt(color.slice(1), 16);
+  let r = (num >> 16) + amount;
+  let g = ((num >> 8) & 0x00FF) + amount;
+  let b = (num & 0x0000FF) + amount;
+  r = Math.min(Math.max(0, r), 255);
+  g = Math.min(Math.max(0, g), 255);
+  b = Math.min(Math.max(0, b), 255);
+  return "#" + (b | (g << 8) | (r << 16)).toString(16).padStart(6, '0');
 }

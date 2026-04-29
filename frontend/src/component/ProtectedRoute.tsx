@@ -61,8 +61,15 @@ export default function ProtectedRoute({ children, allowedRoles = [] }: Protecte
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-primary">
+            <i className="fas fa-graduation-cap text-sm"></i>
+          </div>
+        </div>
+        <p className="mt-4 text-muted-foreground font-medium animate-pulse">Checking credentials...</p>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </div>
     );
   }

@@ -55,7 +55,7 @@ interface StudentSearchResult {
 
 export default function CreateUserPage() {
   const router = useRouter();
-  const { schoolId, userID } = useParams();
+  const { schoolId, userId } = useParams();
   const [formData, setFormData] = useState({
     name: '',
     userId: '',
@@ -360,7 +360,7 @@ export default function CreateUserPage() {
       
       // Redirect after a short delay to show the success message
       setTimeout(() => {
-        router.push(`/${schoolId}/${userID}/dashboard/users`);
+        router.push(`/${schoolId}/${userId}/dashboard/users`);
       }, 1500);
 
     } catch (err: any) {
@@ -797,7 +797,7 @@ grid-cols-2 gap-4">
         <div className="flex justify-end gap-2 pt-4">
           <button
             type="button"
-            onClick={() => router.push(`/${schoolId}/${userID}/dashboard/users`)}
+            onClick={() => router.push(`/${schoolId}/${userId}/dashboard/users`)}
             className="px-4 py-2 border rounded hover:bg-gray-50"
           >
             Cancel

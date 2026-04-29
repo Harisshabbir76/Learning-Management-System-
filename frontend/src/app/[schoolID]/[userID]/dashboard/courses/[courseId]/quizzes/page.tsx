@@ -74,7 +74,7 @@ interface AttemptsInfo {
 }
 
 export default function QuizListPage() {
-  const { schoolID, userID, courseId } = useParams();
+  const { schoolId, userId, courseId } = useParams();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [role, setRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -460,7 +460,7 @@ export default function QuizListPage() {
           
           {(role === "teacher" || role === "admin") && (
             <Link
-              href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/quizzes/create`}
+              href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes/create`}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 font-semibold"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,7 +483,7 @@ export default function QuizListPage() {
               <p className="text-gray-600 mb-6">Get started by creating your first quiz for this course.</p>
               {(role === "teacher" || role === "admin") && (
                 <Link
-                  href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/quizzes/create`}
+                  href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes/create`}
                   className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
                   Create Your First Quiz
@@ -666,7 +666,7 @@ export default function QuizListPage() {
                               </button>
                             ) : attemptsInfo.attemptsRemaining > 0 ? (
                               <Link
-                                href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/quizzes/${quiz._id}/attempt`}
+                                href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes/${quiz._id}/attempt`}
                                 className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
                               >
                                 {isSubmitted ? "Retake Quiz" : "Start Quiz"}
@@ -687,7 +687,7 @@ export default function QuizListPage() {
                             Created on {formatDate(quiz.createdAt)}
                           </div>
                           <Link
-                            href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/quizzes/${quiz._id}/submissions`}
+                            href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes/${quiz._id}/submissions`}
                             className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -906,7 +906,7 @@ export default function QuizListPage() {
                   {selectedQuiz && attemptsInfo[selectedQuiz._id]?.attemptsRemaining > 0 && 
                    !(selectedQuiz.visibleUntil && new Date(selectedQuiz.visibleUntil) < new Date()) && (
                     <Link
-                      href={`/${schoolID}/${userID}/dashboard/courses/${courseId}/quizzes/${selectedQuiz._id}/attempt`}
+                      href={`/${schoolId}/${userId}/dashboard/courses/${courseId}/quizzes/${selectedQuiz._id}/attempt`}
                       className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium"
                       onClick={closeResultModal}
                     >

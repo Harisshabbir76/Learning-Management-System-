@@ -53,7 +53,7 @@ interface Section {
 export default function StudentDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { schoolID, userID, id: studentId } = params;
+  const { schoolId, userId, id: studentId } = params;
   
   const [student, setStudent] = useState<Student | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<LoggedInUser | null>(null);
@@ -140,7 +140,7 @@ export default function StudentDetailPage() {
     };
 
     fetchData();
-  }, [router, schoolID, userID, studentId]);
+  }, [router, schoolId, userId, studentId]);
 
   const fetchAvailableSections = async (token: string) => {
     try {
@@ -348,7 +348,7 @@ export default function StudentDetailPage() {
               <p className="mt-1 text-sm text-red-700">{error}</p>
               <div className="mt-4">
                 <Link
-                  href={`/${schoolID}/${userID}/dashboard/student-affairs`}
+                  href={`/${schoolId}/${userId}/dashboard/student-affairs`}
                   className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
                 >
                   Back to Student List
@@ -388,7 +388,7 @@ export default function StudentDetailPage() {
         {/* Header with back button */}
         <div className="mb-6 flex justify-between items-center">
           <Link
-            href={`/${schoolID}/${userID}/dashboard/student-affairs`}
+            href={`/${schoolId}/${userId}/dashboard/student-affairs`}
             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

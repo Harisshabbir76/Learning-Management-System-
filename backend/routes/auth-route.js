@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = require('../Models/User');
 const Course = require('../Models/Course');
-const School = require('../Models/institure');
+const School = require('../Models/School');
 const authMiddleware = require('../middleware/auth');
 const Student = require('../Models/Student');
 const Teacher = require('../Models/Teacher');
@@ -581,6 +581,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     // Update user
     user.name = name;
     user.email = email;
+    if (req.body.gender) user.gender = req.body.gender;
     
     await user.save();
     

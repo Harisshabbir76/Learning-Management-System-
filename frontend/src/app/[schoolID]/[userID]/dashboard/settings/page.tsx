@@ -16,7 +16,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   // Helper function to get school ID from user object
-  const getSchoolId = () => {
+  const getschoolId = () => {
     if (!user?.school) return null;
     if (typeof user.school === 'string') return user.school;
     if (typeof user.school === 'object') return user.school._id || user.school.id;
@@ -35,7 +35,7 @@ export default function ProfilePage() {
         setUserData(user);
         
         // Get the school ID correctly
-        const schoolId = getSchoolId();
+        const schoolId = getschoolId();
         
         if (!schoolId) {
           console.error('User does not have a school ID');
@@ -89,7 +89,8 @@ export default function ProfilePage() {
       const formData = new FormData(e.target);
       const updateData = {
         name: formData.get('name'),
-        email: formData.get('email')
+        email: formData.get('email'),
+        gender: formData.get('gender')
         // Don't include userId - backend should get it from auth token
       };
       
@@ -190,6 +191,9 @@ export default function ProfilePage() {
         setSchoolData(responseData.data);
         setIsEditingSchool(false);
         setMessage({ type: 'success', text: 'School information updated successfully' });
+        
+        // Refresh auth context to get updated school data
+        await refreshUser();
       } else {
         // More detailed error handling
         let errorMessage = 'Failed to update school information';
@@ -296,6 +300,23 @@ export default function ProfilePage() {
                     </div>
 
                     <div>
+                      <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                        Gender
+                      </label>
+                      <select
+                        name="gender"
+                        id="gender"
+                        defaultValue={userData.gender || 'male'}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        required
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
                       <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                         Email Address
                       </label>
@@ -365,6 +386,10 @@ export default function ProfilePage() {
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Email Address</dt>
                       <dd className="mt-1 text-sm text-gray-900">{userData.email}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Gender</dt>
+                      <dd className="mt-1 text-sm text-gray-900 capitalize">{userData.gender || 'male'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">User ID</dt>

@@ -64,7 +64,7 @@ interface Section {
 
 export default function CourseDetailPage() {
   const router = useRouter();
-  const { schoolId, userID, courseId } = useParams();
+  const { schoolId, userId, courseId } = useParams();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,7 +199,7 @@ export default function CourseDetailPage() {
       return;
     }
     router.push(
-      `/${schoolId}/${userID}/dashboard/courses/${courseId}/edit`
+      `/${schoolId}/${userId}/dashboard/courses/${courseId}/edit`
     );
   };
 
@@ -230,7 +230,7 @@ export default function CourseDetailPage() {
         </div>
         <div className="mt-6">
           <Link
-            href={`/${schoolId}/${userID}/dashboard/courses`}
+            href={`/${schoolId}/${userId}/dashboard/courses`}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-md"
           >
             <FiArrowLeft className="mr-2" />
@@ -261,7 +261,7 @@ export default function CourseDetailPage() {
           <div>
             <button
               onClick={() =>
-                router.push(`/${schoolId}/${userID}/dashboard/courses`)
+                router.push(`/${schoolId}/${userId}/dashboard/courses`)
               }
               className="flex items-center text-blue-600 hover:text-blue-800 transition-colors font-medium"
             >

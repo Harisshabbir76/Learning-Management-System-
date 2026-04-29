@@ -11,7 +11,7 @@ export default function PermissionsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [userId, setUserId] = useState('');
+  const [userId, setuserId] = useState('');
   const [permission, setPermission] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -167,7 +167,7 @@ export default function PermissionsPage() {
       });
       
       fetchUsers(); // Refresh the list
-      setUserId('');
+      setuserId('');
       setPermission('');
       setModalOpen(false);
       setSearchQuery('');
@@ -598,7 +598,7 @@ export default function PermissionsPage() {
               <button 
                 onClick={() => {
                   setModalOpen(false);
-                  setUserId('');
+                  setuserId('');
                   setPermission('');
                   setSearchQuery('');
                   setUserSuggestions([]);
@@ -624,7 +624,7 @@ export default function PermissionsPage() {
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     searchUsers(e.target.value);
-                    setUserId('');
+                    setuserId('');
                   }}
                   className="w-full p-2 pl-9 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                   placeholder="Search users by name or ID"
@@ -640,7 +640,7 @@ export default function PermissionsPage() {
                       <div
                         key={user.userId}
                         onClick={() => {
-                          setUserId(user.userId.toString());
+                          setuserId(user.userId.toString());
                           setSearchQuery(`${user.name} (ID: ${user.userId})`);
                           setShowSuggestions(false);
                         }}
@@ -710,7 +710,7 @@ export default function PermissionsPage() {
                   type="button" 
                   onClick={() => {
                     setModalOpen(false);
-                    setUserId('');
+                    setuserId('');
                     setPermission('');
                     setSearchQuery('');
                     setUserSuggestions([]);

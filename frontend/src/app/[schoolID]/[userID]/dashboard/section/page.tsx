@@ -37,7 +37,7 @@ interface SessionStatus {
 
 export default function SectionsPage() {
   const router = useRouter();
-  const { schoolID, userID } = useParams();
+  const { schoolId, userId } = useParams();
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -278,7 +278,7 @@ export default function SectionsPage() {
         <h1 className="text-3xl font-bold">Sections Management</h1>
         {hasSectionManagementPermission(currentUser) && (
           <Link
-            href={`/${schoolID}/${userID}/dashboard/section/create`}
+            href={`/${schoolId}/${userId}/dashboard/section/create`}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             Create New Section
@@ -301,7 +301,7 @@ export default function SectionsPage() {
             <p className="text-gray-500">No sections found.</p>
             {hasSectionManagementPermission(currentUser) && (
               <Link
-                href={`/${schoolID}/${userID}/dashboard/section/create`}
+                href={`/${schoolId}/${userId}/dashboard/section/create`}
                 className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Create Your First Section
@@ -359,7 +359,7 @@ export default function SectionsPage() {
                         <td className="p-3 text-right">
                           <div className="flex items-center justify-end space-x-4">
                             <Link
-                              href={`/${schoolID}/${userID}/dashboard/section/${section._id}`}
+                              href={`/${schoolId}/${userId}/dashboard/section/${section._id}`}
                               className="text-blue-600 hover:text-blue-800 transition-colors"
                               title="View Section"
                             >

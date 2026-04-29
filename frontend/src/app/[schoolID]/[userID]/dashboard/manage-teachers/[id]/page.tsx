@@ -35,7 +35,7 @@ export default function TeacherDetail() {
   const params = useParams();
   
   // Extract userId from params
-  const teacherUserId = params.userId as string || 
+  const teacheruserId = params.userId as string || 
                        params.id as string || 
                        (params as any).teacherId as string;
   
@@ -57,8 +57,8 @@ export default function TeacherDetail() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Check if teacherUserId is valid before proceeding
-    if (!teacherUserId || teacherUserId === 'undefined') {
+    // Check if teacheruserId is valid before proceeding
+    if (!teacheruserId || teacheruserId === 'undefined') {
       setError('Invalid teacher ID');
       setLoading(false);
       return;
@@ -76,7 +76,7 @@ export default function TeacherDetail() {
         
         // Fetch teacher by userId with role data included
         const teacherRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/users/user-id/${teacherUserId}?includeRoleData=true`, 
+          `${process.env.NEXT_PUBLIC_API_URL}/api/users/user-id/${teacheruserId}?includeRoleData=true`, 
           {
             headers: { Authorization: `Bearer ${storedToken}` },
           }
@@ -186,7 +186,7 @@ export default function TeacherDetail() {
     };
 
     fetchTeacherData();
-  }, [router, teacherUserId]);
+  }, [router, teacheruserId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -271,7 +271,7 @@ export default function TeacherDetail() {
       
       // Refresh the teacher data
       const teacherRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/user-id/${teacherUserId}?includeRoleData=true`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/user-id/${teacheruserId}?includeRoleData=true`, 
         {
           headers: { Authorization: `Bearer ${storedToken}` },
         }
@@ -344,7 +344,7 @@ export default function TeacherDetail() {
   };
 
   // Check for invalid teacher ID before rendering
-  if (!teacherUserId || teacherUserId === 'undefined') {
+  if (!teacheruserId || teacheruserId === 'undefined') {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">

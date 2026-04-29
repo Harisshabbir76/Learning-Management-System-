@@ -75,7 +75,6 @@ schoolSchema.virtual('establishedYearFormatted').get(function() {
 });
 
 // Index for better performance
-schoolSchema.index({ name: 1 });
 schoolSchema.index({ email: 1 });
 schoolSchema.index({ createdBy: 1 });
 schoolSchema.index({ createdAt: -1 });

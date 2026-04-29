@@ -25,8 +25,8 @@ interface SectionData {
 
 export default function UserManagementSystem() {
   const params = useParams();
-  const schoolID = params.schoolID as string;
-  const userID = params.userID as string;
+  const schoolId = params.schoolId as string;
+  const userId = params.userId as string;
   
   const [userPermissions, setUserPermissions] = useState<UserPermissions>({role: ''});
   const [isLoading, setIsLoading] = useState(true);
@@ -69,7 +69,7 @@ export default function UserManagementSystem() {
   const fetchSections = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/api/schools/${schoolID}/sections`, {
+      const response = await fetch(`${API_BASE}/api/schools/${schoolId}/sections`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -213,8 +213,8 @@ export default function UserManagementSystem() {
             </div>
             <div className="p-6">
               <AdminFacultyAttendance 
-                schoolID={schoolID} 
-                userID={userPermissions.userId || userID} 
+                schoolId={schoolId} 
+                userId={userPermissions.userId || userId} 
                 sections={filteredSections}
               />
             </div>
@@ -228,8 +228,8 @@ export default function UserManagementSystem() {
             </div>
             <div className="p-6">
               <TeacherAttendance 
-                schoolID={schoolID} 
-                userID={userPermissions.userId || userID} 
+                schoolId={schoolId} 
+                userId={userPermissions.userId || userId} 
               />
             </div>
           </div>
@@ -242,8 +242,8 @@ export default function UserManagementSystem() {
             </div>
             <div className="p-6">
               <StudentAttendance 
-                schoolID={schoolID} 
-                userID={userPermissions.userId || userID} 
+                schoolId={schoolId} 
+                userId={userPermissions.userId || userId} 
               />
             </div>
           </div>

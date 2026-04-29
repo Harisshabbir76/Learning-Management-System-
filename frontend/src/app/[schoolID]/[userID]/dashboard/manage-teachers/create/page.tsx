@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function CreateUserPage() {
   const router = useRouter();
-  const { schoolId, userID } = useParams(); // Route params
+  const { schoolId, userId } = useParams(); // Route params
   const [formData, setFormData] = useState({
     name: '',
     userId: '',
@@ -143,7 +143,7 @@ export default function CreateUserPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.msg || 'Failed to create user');
 
-      router.push(`/${schoolId}/${userID}/dashboard/manage-teachers`);
+      router.push(`/${schoolId}/${userId}/dashboard/manage-teachers`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -298,7 +298,7 @@ export default function CreateUserPage() {
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => router.push(`/${schoolId}/${userID}/dashboard/manage-teachers`)}
+            onClick={() => router.push(`/${schoolId}/${userId}/dashboard/manage-teachers`)}
             className="px-4 py-2 border rounded"
           >
             Cancel

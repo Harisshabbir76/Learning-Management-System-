@@ -116,8 +116,8 @@ const TimetableEdit = () => {
     }
   };
 
-  // Fetch teachers for the selected course
-  const fetchTeachersForCourse = async (courseId) => {
+  // Fetch teachers for the selected course with optional auto-selection
+  const fetchTeachersForCourse = async (courseId, preSelectedTeacherId = null) => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
@@ -131,7 +131,18 @@ const TimetableEdit = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setTeachers(data.data || []);
+        const teachersList = data.data || [];
+        setTeachers(teachersList);
+        
+        // Auto-select logic
+        if (teachersList.length > 0) {
+          if (preSelectedTeacherId) {
+            setSelectedTeacher(preSelectedTeacherId);
+          } else {
+            // Only auto-select if we don't have a teacher already (e.g. newly selected course)
+            setSelectedTeacher(teachersList[0]._id);
+          }
+        }
       } else {
         toast.error('Failed to fetch teachers for this course');
         setTeachers([]);
@@ -297,11 +308,14 @@ const TimetableEdit = () => {
     );
     
     if (existingSlot) {
-      setSelectedCourse(existingSlot.course?._id || existingSlot.course);
-      setSelectedTeacher(existingSlot.teacher?._id || existingSlot.teacher);
+      const courseId = existingSlot.course?._id || existingSlot.course;
+      const teacherId = existingSlot.teacher?._id || existingSlot.teacher;
       
-      if (existingSlot.course) {
-        fetchTeachersForCourse(existingSlot.course._id || existingSlot.course);
+      setSelectedCourse(courseId);
+      setSelectedTeacher(teacherId);
+      
+      if (courseId) {
+        fetchTeachersForCourse(courseId, teacherId);
       }
     } else {
       setSelectedCourse('');
@@ -315,10 +329,20 @@ const TimetableEdit = () => {
   const handleCourseChange = (e) => {
     const courseId = e.target.value;
     setSelectedCourse(courseId);
-    setSelectedTeacher('');
+    setSelectedTeacher(''); // Clear current selection to trigger auto-select in fetch
     
     if (courseId) {
-      fetchTeachersForCourse(courseId);
+      // First try to use already populated data from sectionCourses for immediate UI response
+      const courseData = sectionCourses.find(c => c._id === courseId);
+      if (courseData && courseData.teachers && courseData.teachers.length > 0) {
+        const teachersList = courseData.teachers;
+        setTeachers(teachersList);
+        setSelectedTeacher(teachersList[0]._id);
+        // Still fetch to ensure we have fresh data
+        fetchTeachersForCourse(courseId, teachersList[0]._id);
+      } else {
+        fetchTeachersForCourse(courseId);
+      }
     } else {
       setTeachers([]);
     }
